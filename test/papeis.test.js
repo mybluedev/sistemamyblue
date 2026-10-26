@@ -230,6 +230,8 @@ test('ferramentas do setor: HTML, versões e quem pode abrir', async () => {
   assert.equal((await coord('PUT', '/api/admin/modulos/cobranca/arquivo', html('Cobrança'), desc('Teste de outro setor.'))).status, 403, 'outro setor');
   const v = await coord('GET', '/api/admin/modulos/boletos/versoes');
   assert.equal(v.json.versoes.length, 2);
+  assert.equal(v.json.versoes.find((x) => x.id === v1).revisada, true, 'aprovada pela administração: revisada');
+  assert.equal(v.json.versoes[0].revisada, false, 'a que aguarda ainda não foi revisada');
   assert.equal((await coord('POST', `/api/admin/modulos/boletos/versoes/${v.json.versoes[1].id}/usar`)).status, 200, 'versão aprovada: a coordenação volta a ela');
   // baixar o HTML de uma versão: como foi enviado, só para quem gerencia a ferramenta
   const baixado = await coord('GET', `/api/admin/modulos/boletos/versoes/${v.json.versoes[1].id}/arquivo`);
