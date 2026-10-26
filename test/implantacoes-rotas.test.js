@@ -310,8 +310,11 @@ test('concluir: aviso à coordenação e ao setor Parceiros, e o condomínio ent
   assert.equal(r0.status, 400); // realizado sem data e hora não salva
   const r1 = await equipe('PATCH', `/api/implantacoes/${idI}/etapas`, { etapas: { ...base, onboarding: { situacao: 'realizado', data: '2026-10-20', hora: '10:00' } } });
   assert.deepEqual(r1.json.faltas, []);
-  const r = await equipe('POST', `/api/implantacoes/${idI}/concluir`, {});
-  assert.equal(r.status, 200, r.texto);
+  // clique duplo: só um pedido conclui (não repete avisos nem a ida para Parceiros)
+  const duplo = await Promise.all([1, 2].map(() => equipe('POST', `/api/implantacoes/${idI}/concluir`, {})));
+  assert.equal(duplo.filter((x) => x.status === 200).length, 1, duplo.map((x) => x.texto).join(' | '));
+  const r = duplo.find((x) => x.status === 200);
+  assert.equal((await ctx.db.um("SELECT COUNT(*)::int AS n FROM implantacao_eventos WHERE implantacao_id = $1 AND tipo = 'concluida'", [idI])).n, 1);
   assert.equal(r.json.parceiros.criado, 'Condomínio Residencial Fictício');
   const condo = await ctx.registros.obter('parceiros', 'condos', 'c-condominioresidencialficticio');
   assert.deepEqual(JSON.parse(condo.vinculosJSON), [{ partnerId: 'p-alfa', rate: 0 }]);
