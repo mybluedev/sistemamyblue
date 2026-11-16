@@ -94,7 +94,7 @@ module.exports = {
     const A = '1 · Assistente';
     await t.legenda('Cada um abre no <b>Meu dia</b>. Com <b>Ver como</b>, a Coordenação vê o do Assistente: o que está <b>atrasado</b>, o que é <b>para hoje</b> e o que espera retorno.', { etapa: A, ms: 300 });
     await ver('assist');
-    await t.mostrar(f.locator('#conteudo .grade-kpi'), 2600);
+    await t.mostrar(f.locator('#conteudo .resumo-dia'), 2600);
     await t.legenda('Rotina com o selo <b>automática</b> se marca sozinha quando o portal já tem a prova: pedidos incluídos, documento no Fluig, contas em dia. As outras: um clique em <b>Feito</b>.', { etapa: A, ms: 300 });
     await t.mostrar(f.locator('#conteudo .rot').first(), 2800);
     await t.legenda('Nas rotinas de pedidos, <b>+ Pedido</b>: nº do Protheus, tipo (PA, PAG ou NENHUM) e o anexo no Fluig. Os <b>prazos</b> saem sozinhos.', { etapa: A, ms: 300 });
@@ -103,7 +103,7 @@ module.exports = {
     await f.locator('#pTipo').selectOption('NENHUM');
     await t.pausa(2200);
     await t.clicar(f.locator('#modalPed [data-fechar]').first(), { depois: 800 });
-    await t.legenda('Precisa de retorno? Em <b>Observação ou aguardar</b>, escolhe <b>Aguardar a Supervisão</b>: ela recebe o aviso no sino e por e-mail. Ao lado, as <b>metas do mês</b>.', { etapa: A, ms: 300 });
+    await t.legenda('Precisa de retorno? No <b>⋯</b> da rotina, escolhe <b>Aguardar a Supervisão</b>: ela recebe o aviso no sino e por e-mail. Ao lado, as <b>metas do mês</b>.', { etapa: A, ms: 300 });
     await t.mostrar(f.locator('#conteudo .coluna').nth(1), 2800);
 
     const S = '2 · Supervisão';
@@ -121,7 +121,7 @@ module.exports = {
     const F = '4 · Fechamento';
     await t.legenda('No fim do mês, <b>Fechamento</b>: confere as metas, fecha (o mês trava) e copia o resultado para a <b>Gestão de Premiações</b>.', { etapa: F, ms: 300 });
     await t.clicar(f.locator('#abas > [data-vista="fecha"]'), { depois: 3000 });
-    await t.legenda('Em <b>Mais → Rotinas</b>, a Coordenação cadastra as rotinas de todos (a Supervisão, as do Assistente), escolhe as automáticas e as <b>folgas</b>.', { etapa: F, ms: 300 });
+    await t.legenda('Em <b>Mais → Rotinas</b>, a Coordenação cadastra as rotinas de todos e as <b>folgas</b>; a Supervisão cadastra as dela e as do Assistente.', { etapa: F, ms: 300 });
     await t.clicar(f.locator('#btMais'), { depois: 700 });
     await t.clicar(f.locator('.mais-menu [data-vista="atv"]'), { depois: 2400 });
   },
