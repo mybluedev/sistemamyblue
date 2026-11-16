@@ -85,43 +85,45 @@ module.exports = {
     await f.locator('#abas [data-vista]').first().waitFor({ timeout: 30000 });
     await t.pausa(800);
   },
-  abertura: ['As rotinas do Administrativo/Financeiro num lugar só: o que cada um faz, em que pé está e as metas do Assistente.',
-    ['A tela do Assistente', 'A tela da Supervisão', 'O controle da Coordenação', 'Fechamento do mês']],
+  abertura: ['As rotinas do Administrativo/Financeiro num lugar só: cada um abre no seu dia, o que já está no portal se marca sozinho e a Coordenação acompanha a equipe.',
+    ['Meu dia do Assistente', 'Meu dia da Supervisão', 'Equipe, na Coordenação', 'Fechamento do mês']],
   async gravar(t) {
     const f = quadro(t);
     const ver = async (quem) => { await f.locator('#verComo').selectOption(quem); await t.pausa(900); };
 
     const A = '1 · Assistente';
-    await t.legenda('Cada um abre na sua tela. Com <b>Ver como</b>, a Coordenação vê a do Assistente: as <b>rotinas de hoje</b> para marcar o status.', { etapa: A, ms: 300 });
+    await t.legenda('Cada um abre no <b>Meu dia</b>. Com <b>Ver como</b>, a Coordenação vê o do Assistente: o que está <b>atrasado</b>, o que é <b>para hoje</b> e o que espera retorno.', { etapa: A, ms: 300 });
     await ver('assist');
     await t.mostrar(f.locator('#conteudo .grade-kpi'), 2600);
-    await t.legenda('Nas rotinas de pedidos, ele lança cada pedido: nº do Protheus, tipo (PA, PAG ou NENHUM) e o anexo no Fluig. Os <b>prazos</b> saem sozinhos.', { etapa: A, ms: 300 });
+    await t.legenda('Rotina com o selo <b>automática</b> se marca sozinha quando o portal já tem a prova: pedidos incluídos, documento no Fluig, contas em dia. As outras: um clique em <b>Feito</b>.', { etapa: A, ms: 300 });
+    await t.mostrar(f.locator('#conteudo .rot').first(), 2800);
+    await t.legenda('Nas rotinas de pedidos, <b>+ Pedido</b>: nº do Protheus, tipo (PA, PAG ou NENHUM) e o anexo no Fluig. Os <b>prazos</b> saem sozinhos.', { etapa: A, ms: 300 });
     await t.clicar(f.locator('[data-novoped]').first(), { depois: 1400 });
     await f.locator('#pNum').fill('004822');
     await f.locator('#pTipo').selectOption('NENHUM');
     await t.pausa(2200);
     await t.clicar(f.locator('#modalPed [data-fechar]').first(), { depois: 800 });
-    await t.legenda('Precisa de retorno? Marca <b>Aguardando supervisão</b>: a Supervisão recebe o aviso no sino e por e-mail. Ao lado, a prévia das <b>metas do mês</b>.', { etapa: A, ms: 300 });
-    await t.mostrar(f.locator('#conteudo .coluna').first(), 2800);
+    await t.legenda('Precisa de retorno? Em <b>Observação ou aguardar</b>, escolhe <b>Aguardar a Supervisão</b>: ela recebe o aviso no sino e por e-mail. Ao lado, as <b>metas do mês</b>.', { etapa: A, ms: 300 });
+    await t.mostrar(f.locator('#conteudo .coluna').nth(1), 2800);
 
     const S = '2 · Supervisão';
     await ver('sup');
-    await t.legenda('A Supervisão abre em <b>Aguardando mim</b>: responde ou <b>encaminha à Coordenação</b> o que passa da alçada dela.', { etapa: S, ms: 300 });
+    await t.legenda('O <b>Meu dia</b> da Supervisão junta as rotinas dela e o que <b>espera por ela</b>: responde, devolve ou <b>encaminha à Coordenação</b> ali mesmo.', { etapa: S, ms: 300 });
     await t.pausa(2600);
-    await t.legenda('Em <b>Conferir pedidos</b>, confere no Protheus e no Fluig. Só conta na meta do Assistente o pedido conferido; <b>Devolver</b> volta para ele com o motivo.', { etapa: S, ms: 300 });
-    await t.clicar(f.locator('[data-vista="conferir"]'), { depois: 2600 });
+    await t.legenda('Em <b>Conferir</b>, confere no Protheus e no Fluig. Só conta na meta do Assistente o pedido conferido; <b>Devolver</b> volta para ele com o motivo.', { etapa: S, ms: 300 });
+    await t.clicar(f.locator('#abas > [data-vista="conferir"]'), { depois: 2600 });
 
     const C = '3 · Coordenação';
     await ver('coord');
-    await t.legenda('A Coordenação tem as duas visões: <b>Controle da Supervisão</b> (prazo, tempo de resposta, Análise de Crédito) e <b>Controle do Assistente</b> (metas).', { etapa: C, ms: 300 });
-    await t.clicar(f.locator('[data-vista="ctrlS"]'), { depois: 2600 });
-    await t.clicar(f.locator('[data-vista="ctrlA"]'), { depois: 2800 });
+    await t.legenda('A Coordenação abre em <b>Equipe</b>: um farol por função (em dia, atenção, precisa de ação), a semana, o mês anterior e <b>onde agir primeiro</b>.', { etapa: C, ms: 300 });
+    await t.clicar(f.locator('#abas > [data-vista="equipe"]'), { depois: 3200 });
 
     const F = '4 · Fechamento';
     await t.legenda('No fim do mês, <b>Fechamento</b>: confere as metas, fecha (o mês trava) e copia o resultado para a <b>Gestão de Premiações</b>.', { etapa: F, ms: 300 });
-    await t.clicar(f.locator('[data-vista="fecha"]'), { depois: 3000 });
-    await t.legenda('Em <b>Rotinas</b>, a Coordenação cadastra as rotinas de todos (a Supervisão, as do Assistente) e as <b>folgas</b>.', { etapa: F, ms: 300 });
-    await t.clicar(f.locator('[data-vista="atv"]'), { depois: 2400 });
+    await t.clicar(f.locator('#abas > [data-vista="fecha"]'), { depois: 3000 });
+    await t.legenda('Em <b>Mais → Rotinas</b>, a Coordenação cadastra as rotinas de todos (a Supervisão, as do Assistente), escolhe as automáticas e as <b>folgas</b>.', { etapa: F, ms: 300 });
+    await t.clicar(f.locator('#btMais'), { depois: 700 });
+    await t.clicar(f.locator('.mais-menu [data-vista="atv"]'), { depois: 2400 });
   },
-  resumo: ['Cada um na sua tela: <b>Assistente</b>, <b>Supervisão</b> e <b>Coordenação</b>', '<b>Aguardando</b> avisa quem responde no sino e por e-mail', 'Pedidos com prazo por tipo · metas e <b>fechamento do mês</b>'],
+  resumo: ['Cada um no seu <b>Meu dia</b>: atrasadas, hoje e o que espera retorno', 'Rotinas <b>automáticas</b> se marcam sozinhas pelo que já está no portal', '<b>Equipe</b> com farol por função · metas e <b>fechamento do mês</b>'],
 };
