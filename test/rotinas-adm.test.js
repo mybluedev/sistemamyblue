@@ -172,3 +172,32 @@ test('painel: tickets de estorno sem a descrição; Análise de Crédito só par
   const sem = await entrar('sem@teste.com', 'Senha1234');
   assert.equal((await sem('GET', `/api/db/${SLUG}/painel`)).status, 403);
 });
+
+test('sem papel na ferramenta, vale o cargo no portal de quem é do setor (supervisor → Supervisão)', async () => {
+  // ninguém mais com o papel "supervisao" na ferramenta; uma supervisora do setor pelo cargo do portal
+  await ctx.db.q("UPDATE permissoes SET papeis = '{}' WHERE modulo_slug = $1 AND usuario_id = $2", [SLUG, sup.id]);
+  const cargo = await pessoa('Eva Fictícia', 'eva@teste.com', []);
+  await ctx.db.q("UPDATE usuarios SET papel = 'supervisor' WHERE id = $1", [cargo.id]);
+  await ctx.db.q('INSERT INTO setor_membros (usuario_id, setor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [cargo.id, setorId]);
+
+  // o HTML recebe o cargo de quem é do setor; de quem não é, null
+  await ctx.modulos.salvarVersao(SLUG, Buffer.from('<!DOCTYPE html><html><head><title>Rotinas</title></head><body></body></html>'), 'teste.html', null);
+  const m = await ctx.modulos.obter(SLUG);
+  const conf = async (u) => { const h = await ctx.modulos.montarHtml(m, u, { papeis: [] }); return h && JSON.parse(/window\.__MYBLUE__=(\{.*?\});\n/s.exec(h)[1].replace(/\\u003c/g, '<')).usuario; };
+  const html = await ctx.modulos.montarHtml(m, await ctx.db.um('SELECT * FROM usuarios WHERE id = $1', [cargo.id]), { papeis: [] });
+  assert.ok(html, 'o HTML de teste foi montado');
+  {
+    assert.equal((await conf(await ctx.db.um('SELECT * FROM usuarios WHERE id = $1', [cargo.id]))).cargo_setor, 'supervisor');
+    assert.equal((await conf(await ctx.db.um('SELECT * FROM usuarios WHERE id = $1', [assist.id]))).cargo_setor, null);
+  }
+
+  // Análise de Crédito: a supervisora pelo cargo vê; o Assistente continua sem ver
+  assert.ok((await cargo.c('GET', `/api/db/${SLUG}/painel`)).json.credito);
+  assert.equal((await assist.c('GET', `/api/db/${SLUG}/painel`)).json.credito, null);
+
+  // aguardando supervisão → só a supervisora do setor (não a coordenação)
+  await limpar();
+  await gravar(assist, [{ op: 'set', path: 'status/2026-11__a1', data: { mes: '2026-11', atv: 'a1', dias: { 12: dia('aguardando_sup', assist) } } }]);
+  assert.equal((await avisosDe(cargo.id)).length, 1);
+  assert.deepEqual(await avisosDe(coord.id), []);
+});
