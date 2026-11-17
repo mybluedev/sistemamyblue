@@ -5773,10 +5773,10 @@
       etq(pos.concluido ? ['etapas feitas', 'verde'] : pos.atrasadas ? [pos.atrasadas + (pos.atrasadas === 1 ? ' atrasada' : ' atrasadas'), 'vermelha'] : [pos.etapas.filter(function (x) { return x.feito && !x.acao; }).length + ' de 3 feitas', 'azul']) +
       '<span class="espaco"></span><span class="ajuda" style="margin:0">com a Assistente de Implantação · prazos em dias úteis</span></div><div class="corpo pilha" style="gap:0">';
     html += linha(1, esp, 'Verifique no Assertiva e abra a solicitação na <b>Análise de Espólio</b> com o documento; a coordenação de cobrança analisa e devolve. ' + diasUteisImp(esp.dias) + ' depois de assumir (' + dataBr(esp.inicio) + ').', extraEsp,
-      cobrar(esp) + '<a class="btn ' + (esp.acao ? 'primary' : 'ghost') + ' sm" href="#/m/analise-de-espolio">Abrir a Análise de Espólio</a>' + (marca && !esp.feito ? '<button class="btn ghost sm" id="btPosEsp">Já abri: informar o protocolo</button>' : ''));
+      cobrar(esp) + (marca ? '<a class="btn ' + (esp.acao ? 'primary' : 'ghost') + ' sm" href="#/m/analise-de-espolio">Abrir a Análise de Espólio</a>' : '') + (marca && !esp.feito ? '<button class="btn ghost sm" id="btPosEsp">Já abri: informar o protocolo</button>' : ''));
     html += linha(2, pen, 'O PDF sai da <b>Central de Ferramentas</b> (Planilha de moradores), vai pelo WhatsApp e fica salvo no CPD, na pasta do condomínio. ' + diasUteisImp(pen.dias) + ' depois de emitir os boletos' + (pen.inicio ? ' (' + dataBr(pen.inicio) + ')' : '') + '.',
       pen.registro ? esc(pen.registro.texto) + quem(pen.registro) + ' ' + desfazer('pendencias') : '',
-      cobrar(pen) + '<a class="btn ghost sm" href="#/m/credito">Abrir a Central de Ferramentas</a>' + (marca && pen.acao ? '<button class="btn primary sm" id="btPosPend">Registrar o envio</button>' : ''));
+      cobrar(pen) + (marca ? '<a class="btn ghost sm" href="#/m/credito">Abrir a Central de Ferramentas</a>' : '') + (marca && pen.acao ? '<button class="btn primary sm" id="btPosPend">Registrar o envio</button>' : ''));
     html += linha(3, pre, 'Feita no <b>Montador</b> (Central de Ferramentas), enviada ao condomínio e salva no CPD. A implantação faz só a 1ª. ' + diasUteisImp(pre.dias) + ' depois do repasse' +
       (pre.inicio ? ' (' + dataBr(pre.inicio) + ', 1º dia útil depois do vencimento de ' + dataBr(pre.vencimento) + ')' : ' (1º dia útil depois do 1º vencimento)') + '.',
       pre.registro ? 'Enviada ao condomínio' + quem(pre.registro) + ' ' + desfazer('prestacao') : '',
