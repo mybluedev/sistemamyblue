@@ -57,6 +57,12 @@ function criarAvisosRotinas({ db, documentos, avisos, acessos }) {
         WHERE p.modulo_slug = $1 AND u.ativo AND NOT p.somente_leitura AND $2 = ANY(p.papeis)`, [MODULO, papel]);
       if (rows.length) return rows.map((x) => x.usuario_id);
     }
+    // sem ninguém com o papel na ferramenta: o cargo no portal de quem é do setor (supervisor → Supervisão;
+    // coordenador, gerente ou diretor → Coordenação); sem ninguém com esse cargo, toda a gestão do setor
+    const cargos = papel === 'supervisao' ? ['supervisor'] : ['coordenador', 'gerente', 'diretor'];
+    const pelaFuncao = (await db.q(`SELECT sm.usuario_id FROM setor_membros sm JOIN usuarios u ON u.id = sm.usuario_id
+      WHERE sm.setor_id = $1 AND u.ativo AND u.papel = ANY($2::text[])`, [m.setor_id, cargos])).rows.map((x) => x.usuario_id);
+    if (pelaFuncao.length) return pelaFuncao;
     const coord = (await db.q(`SELECT sm.usuario_id FROM setor_membros sm JOIN usuarios u ON u.id = sm.usuario_id
       WHERE sm.setor_id = $1 AND u.ativo AND u.papel IN ('diretor', 'gerente', 'coordenador', 'supervisor')`, [m.setor_id])).rows.map((x) => x.usuario_id);
     if (coord.length) return coord;
@@ -151,7 +157,11 @@ function criarAvisosRotinas({ db, documentos, avisos, acessos }) {
     const mes = /^\d{4}-\d{2}$/.test(String(mesTxt || '')) ? mesTxt : null;
     const a = acessos ? await acessos.acessoDe(usuario, m) : { papeis: [] };
     const cadastrados = new Set(((m.config && m.config.papeis) || []).map((p) => p && p.id));
-    const veCredito = usuario.papel === 'admin' || PODE_CREDITO.some((p) => (a.papeis || []).includes(p)) || !PODE_CREDITO.some((p) => cadastrados.has(p));
+    // sem papel na ferramenta, vale o cargo no portal de quem é do setor (supervisor, coordenador, gerente, diretor)
+    const gestorDoSetor = ['diretor', 'gerente', 'coordenador', 'supervisor'].includes(usuario.papel) && m.setor_id &&
+      !!(await db.um('SELECT 1 AS ok FROM setor_membros WHERE usuario_id = $1 AND setor_id = $2', [usuario.id, m.setor_id]));
+    const veCredito = usuario.papel === 'admin' || PODE_CREDITO.some((p) => (a.papeis || []).includes(p)) || gestorDoSetor ||
+      (!PODE_CREDITO.some((p) => cadastrados.has(p)) && !m.setor_id);
 
     let credito = null;
     if (veCredito) {

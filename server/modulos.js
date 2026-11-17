@@ -138,13 +138,16 @@ function criarServicoModulos(db, cfg) {
 
     // isolada não tem armazenamento do navegador: o que seria "só no navegador" fica no portal, por pessoa
     const modo = m.armazenamento === 'navegador' && chave ? 'usuario' : m.armazenamento;
+    // cargo no portal (coordenador, supervisor, usuário…) de quem é do setor dono da ferramenta; de fora do setor, null.
+    // A ferramenta pode usá-lo quando a pessoa não tem papel cadastrado nela (ex.: Controle de Rotinas).
+    const doSetor = m.setor_id ? await db.um('SELECT 1 AS ok FROM setor_membros WHERE usuario_id = $1 AND setor_id = $2', [usuario.id, m.setor_id]) : null;
     const conf = {
       modulo: m.slug,
       modo,
       locais: m.config.chaves_locais || [],
       livres: m.config.chaves_livres || [],
       usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, admin: usuario.papel === 'admin', foto_v: usuario.foto_v || null,
-        papeis: acesso.papeis || [], somente_leitura: !!acesso.somente_leitura },
+        papeis: acesso.papeis || [], somente_leitura: !!acesso.somente_leitura, cargo_setor: doSetor ? usuario.papel || null : null },
       papeis: acesso.papeis_da_ferramenta || [],
       claudeDb: m.adaptador === 'claude-db',
       // isolada: roda em sandbox (origem própria) e fala com o portal pela chave
