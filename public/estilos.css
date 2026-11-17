@@ -789,3 +789,20 @@ tr.sel-ct td{background:var(--surface-2)}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
 .sel-pilula option{background:#fff;color:#163a52;font-weight:600}
 .sel-pilula:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+/* aba Em andamento: em tela estreita cada condomínio vira um cartão (tudo à mostra, sem rolar para o lado) */
+@media (max-width:1400px){
+  .tabela-andamento,.tabela-andamento tbody{display:block}
+  .tabela-andamento thead{display:none}
+  .tabela-andamento tr{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .tabela-andamento td{display:block;padding:0;border:0}
+  .tabela-andamento td[data-rot]::before{content:attr(data-rot);display:block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .tabela-andamento td.cond-an{grid-column:1/-2;grid-row:1}
+  .tabela-andamento td.sit-an{grid-column:-2/-1;grid-row:1;justify-self:end;align-self:start}
+  .tabela-andamento td.vazio{grid-column:1/-1}
+}
+@media (max-width:560px){
+  .tabela-andamento tr{grid-template-columns:1fr 1fr}
+  .tabela-andamento td.cond-an{grid-column:1/-1;grid-row:auto}
+  .tabela-andamento td.sit-an{grid-column:1/-1;grid-row:auto;justify-self:start;order:-1}
+}

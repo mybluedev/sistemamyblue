@@ -4940,17 +4940,17 @@
       '<select class="sel-pilula" id="anMes" aria-label="Competência">' + opcoes([['', 'Todas as competências']].concat(MESES_LONGO.map(function (m, k) { return [k + 1, m]; })), f.mes) + '</select>' +
       '<span class="ajuda" style="margin:0">a competência é o mês do início do contrato</span></div>' +
       '<section class="painel"><div class="cab-painel"><h2>Condomínios em implantação</h2><span class="espaco"></span><span class="sec"><b>' + j.lista.length + '</b> em andamento</span></div>' +
-      '<div class="tabela-wrap"><table><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
+      '<div class="tabela-wrap"><table class="tabela-andamento"><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
       (j.lista.map(function (l) {
         var d = dias(l.primeiro_vencimento);
         var quando = d < 0 ? etq(['venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias'), 'vermelha']) : d === 0 ? etq(['vence hoje', 'vermelha']) : d <= 15 ? etq(['em ' + d + (d === 1 ? ' dia' : ' dias'), 'ambar']) : '<span class="sec">em ' + d + ' dias</span>';
-        return '<tr class="clicavel" data-imp="' + l.id + '" title="Abrir a implantação (só leitura)"><td><b>' + esc(l.condominio || 'Sem nome') + '</b><span class="sec">' + esc([l.uf, l.uh_total ? l.uh_total + ' unidades' : ''].filter(Boolean).join(' · ')) + '</span>' +
+        return '<tr class="clicavel" data-imp="' + l.id + '" title="Abrir a implantação (só leitura)"><td class="cond-an"><b>' + esc(l.condominio || 'Sem nome') + '</b><span class="sec">' + esc([l.uf, l.uh_total ? l.uh_total + ' unidades' : ''].filter(Boolean).join(' · ')) + '</span>' +
           (l.executivo_nome ? '<span class="sec">' + esc(l.executivo_nome) + '</span>' : '') + '</td>' +
-          '<td>' + (l.responsavel_nome ? esc(l.responsavel_nome) : '<span class="sec">aguardando designação</span>') + '</td>' +
-          '<td>' + esc(dataBr(l.inicio).slice(3)) + '<span class="sec">' + (l.dia_vencimento ? 'vence todo dia ' + l.dia_vencimento : 'sem dia de vencimento') + '</span></td>' +
-          '<td><b>' + esc(dataBr(l.primeiro_vencimento)) + '</b>' + (l.vencimento_previsto ? ' ' + etq(['previsto', 'cinza']) : '') + '<span class="sec">' + quando + '</span></td>' +
-          '<td>' + selosImp(l.feitas) + '<span class="sec">' + l.pct + '% concluído</span></td><td>' + esc(onbAndamento(l.onboarding)) + '</td>' +
-          '<td>' + etq(SIT_ANDAMENTO[l.etapa] || [l.etapa, 'cinza']) + '</td></tr>';
+          '<td data-rot="Assistente">' + (l.responsavel_nome ? esc(l.responsavel_nome) : '<span class="sec">aguardando designação</span>') + '</td>' +
+          '<td data-rot="Início">' + esc(dataBr(l.inicio).slice(3)) + '<span class="sec">' + (l.dia_vencimento ? 'vence todo dia ' + l.dia_vencimento : 'sem dia de vencimento') + '</span></td>' +
+          '<td data-rot="1º vencimento"><b>' + esc(dataBr(l.primeiro_vencimento)) + '</b>' + (l.vencimento_previsto ? ' ' + etq(['previsto', 'cinza']) : '') + '<span class="sec">' + quando + '</span></td>' +
+          '<td data-rot="Andamento">' + selosImp(l.feitas) + '<span class="sec">' + l.pct + '% concluído</span></td><td data-rot="Onboarding">' + esc(onbAndamento(l.onboarding)) + '</td>' +
+          '<td class="sit-an">' + etq(SIT_ANDAMENTO[l.etapa] || [l.etapa, 'cinza']) + '</td></tr>';
       }).join('') || '<tr><td colspan="7" class="vazio">Nenhuma implantação em andamento em ' + periodo + '.</td></tr>') +
       '</tbody></table></div><p class="ajuda" style="margin:0;padding:10px 16px 14px">Ordenado pelo 1º vencimento. "Previsto": o 1º vencimento ainda não foi informado e foi calculado pelo dia de vencimento e o início do contrato. ' +
       'Etapas: documentação, Vouch, onboarding, boletos e envio (verde = feita). Clique na linha para abrir a implantação (só leitura).</p></section></div>';
