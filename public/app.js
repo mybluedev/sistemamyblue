@@ -4931,7 +4931,7 @@
     var opcoes = function (lista, valor) { return lista.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(valor) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); };
     var hoje = j.hoje, periodo = (f.mes ? MESES_LONGO[f.mes - 1].toLowerCase() + ' de ' : '') + j.ano;
     var dias = function (d) { return Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) - Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7) - 1, +hoje.slice(8, 10))) / 864e5); };
-    $('#conteudo').innerHTML = '<div class="pagina" style="max-width:1400px">' +
+    $('#conteudo').innerHTML = '<div class="pagina" style="max-width:none">' +
       '<div class="cab-acomp"><div class="tit-acomp"><h1>Painel de implantação</h1><p class="sub" style="margin:0">Os condomínios que estão sendo implantados: andamento, vencimentos e quem cuida de cada um. <b>Só consulta.</b></p></div></div>' +
       (abas.length > 1 ? '<nav class="abas abas-acomp">' + abas.map(function (a) { return '<a href="#/implantacao/' + a[0] + '" class="' + (a[0] === 'andamento' ? 'on' : '') + '">' + (IC[a[2]] || '') + esc(a[1]) + '</a>'; }).join('') + '</nav>'
         : '<nav class="abas abas-acomp"><a href="#/implantacao/andamento" class="on">' + IC.olho + 'Em andamento</a></nav>') +
@@ -4940,7 +4940,7 @@
       '<select class="sel-pilula" id="anMes" aria-label="Competência">' + opcoes([['', 'Todas as competências']].concat(MESES_LONGO.map(function (m, k) { return [k + 1, m]; })), f.mes) + '</select>' +
       '<span class="ajuda" style="margin:0">a competência é o mês do início do contrato</span></div>' +
       '<section class="painel"><div class="cab-painel"><h2>Condomínios em implantação</h2><span class="espaco"></span><span class="sec"><b>' + j.lista.length + '</b> em andamento</span></div>' +
-      '<div class="tabela-wrap"><table class="tabela-andamento"><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
+      '<div class="tabela-wrap lista-andamento"><table class="tabela-andamento"><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
       (j.lista.map(function (l) {
         var d = dias(l.primeiro_vencimento);
         var quando = d < 0 ? etq(['venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias'), 'vermelha']) : d === 0 ? etq(['vence hoje', 'vermelha']) : d <= 15 ? etq(['em ' + d + (d === 1 ? ' dia' : ' dias'), 'ambar']) : '<span class="sec">em ' + d + ' dias</span>';
