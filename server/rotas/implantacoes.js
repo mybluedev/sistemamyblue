@@ -317,18 +317,22 @@ function rotasImplantacoes({ db, seg, cfg, avisos, regras, registros, expediente
     const gestorPapel = seg.GESTORES_DE_SETOR.includes(u.papel);
     const equipe = meus.has(SETOR);
     const executivo = await db.um('SELECT id, nome, uf FROM executivos WHERE usuario_id = $1 AND ativo', [u.id]);
+    // diretoria (qualquer chancela): vê o Painel de implantação inteiro, só consulta
+    const diretoria = admin || (await regras.ehDiretoria(u));
     return {
-      admin, equipe, executivo,
+      admin, equipe, executivo, diretoria,
       coordenacao: admin || (equipe && (meus.get(SETOR) || gestorPapel)),
-      // diretoria (qualquer chancela) e Gestão do Comercial: veem todas as implantações, só consulta
-      diretoria: admin || (await regras.ehDiretoria(u)) || (await regras.pode(u, 'comercial.gestao')),
+      // Implantações em andamento (só consulta): a diretoria vê completa (números, gráficos e a lista); a Gestão do Comercial
+      // e quem tem "Acompanhar as implantações" (gestão da Cobrança), só a lista em andamento
+      acompanha: diretoria ? 'completo' : (await regras.pode(u, 'comercial.gestao')) || (await regras.pode(u, 'implantacao.acompanhar')) ? 'lista' : null,
     };
   }
 
   /* quem edita: a designada (responsável), a coordenação e quem tem autorização da coordenação (aut: { escopo }) */
   function pode(p, i, u, aut = null) {
     const dono = i.solicitante_id === u.id || !!(p.executivo && i.executivo_id === p.executivo.id);
-    const interno = p.admin || p.equipe || p.coordenacao || p.diretoria;
+    // quem acompanha pelas Implantações em andamento abre a implantação só para leitura (nenhuma ação depende disso)
+    const interno = p.admin || p.equipe || p.coordenacao || p.diretoria || !!p.acompanha;
     const editavel = ['rascunho', 'pendencia'].includes(i.etapa);
     const aberta = !['cancelada', 'na_carteira'].includes(i.etapa);
     const responsavel = i.responsavel_id === u.id;
@@ -411,7 +415,7 @@ function rotasImplantacoes({ db, seg, cfg, avisos, regras, registros, expediente
   r.get('/api/implantacoes/meta', async (req, res) => {
     const p = await perfil(req.usuario);
     res.json({
-      perfil: { admin: p.admin, equipe: p.equipe, coordenacao: p.coordenacao, diretoria: p.diretoria, executivo: p.executivo },
+      perfil: { admin: p.admin, equipe: p.equipe, coordenacao: p.coordenacao, diretoria: p.diretoria, executivo: p.executivo, acompanha: p.acompanha },
       executivos: p.admin ? (await db.q('SELECT id, nome, uf FROM executivos WHERE ativo ORDER BY nome')).rows : p.executivo ? [p.executivo] : [],
       da_advogada: F.DA_ADVOGADA,
       documentos: Object.entries(F.DOCUMENTOS).map(([tipo, d]) => ({ tipo, ...d })),
@@ -424,7 +428,9 @@ function rotasImplantacoes({ db, seg, cfg, avisos, regras, registros, expediente
 
   r.get('/api/implantacoes/resumo', async (req, res) => {
     const p = await perfil(req.usuario);
-    const out = { acesso: !!(p.executivo || p.equipe || p.coordenacao || p.diretoria), acompanhamento: !!(p.admin || p.equipe || p.coordenacao || p.diretoria) };
+    const painel = !!(p.executivo || p.equipe || p.coordenacao || p.diretoria);
+    // painel: o Painel de implantação; andamento: a tela Implantações em andamento
+    const out = { acesso: painel || !!p.acompanha, painel, andamento: !!p.acompanha, acompanhamento: !!(p.admin || p.equipe || p.coordenacao || p.diretoria) };
     if (!out.acesso) return res.json(out);
     if (p.equipe || p.coordenacao) {
       Object.assign(out, await db.um(`SELECT COUNT(*) FILTER (WHERE etapa = 'fila')::int AS fila,

@@ -175,12 +175,20 @@ Os endereços antigos (`#/acompanhamento/...`, `#/implantacao/fila`, `todas`, `c
 | Diretoria | Dashboard | as mesmas telas, **só consulta** (o servidor não deixa agir) |
 | Assistente de implantação (setor) | Painel de atividades → Fila, filtrado para ela ("ver o setor todo" limpa o filtro) | Dashboard com a carteira dela e o percentual das metas |
 | Comercial (executivo) | Minhas solicitações | situação de cada pedido, "Falta de você" e Responder / Enviar documentos / Abrir |
+| Gestão do Comercial e gestão da Cobrança | **Implantações em andamento** (não têm o Painel de implantação) | só a lista em andamento, pelo ano e pela competência; a implantação abre só para leitura |
 
 - **Dashboard** (só indicadores): contratos, % médio, concluídos, em andamento e não iniciados; progresso por etapa;
   contratos e concluídos por mês; **Prazo para concluir** (concluídas no prazo, tempo médio e uma tabela por
   assistente com contratos, % médio, concluídas, tempo e no prazo — `linhas[].concluir`); metas de onboarding e de
   documentação em %; por UF e por executivo; **Pendências para acompanhar** (onboarding, do limite mais curto, com
   Cobrar; documentação, com Cobrar o executivo e marcar à mão) e o desempenho do mês na pós-implantação (gestão).
+- **Implantações em andamento** (menu próprio, `#/implantacao/andamento`, `GET /api/implantacoes/andamento?ano=&mes=`):
+  só consulta, para quem acompanha de fora do setor. O ano e a competência (mês do início do contrato), em lista
+  suspensa, mudam a tela toda. A **diretoria** vê completo: os números e os gráficos do Dashboard, o card do
+  1º vencimento nos próximos 15 dias e a lista (em andamento, concluídas ou todas), com Excel. A **Gestão do Comercial** e quem
+  tem a permissão **Acompanhar as implantações** (padrão: gestão do setor Cobrança) veem só a lista em andamento. A lista
+  traz condomínio, executivo, assistente, início, vencimento padrão, 1º vencimento (com "previsto" e quanto falta),
+  etapas, onboarding e situação; clicar abre a implantação só para leitura (`perfil.acompanha`: `completo` ou `lista`).
 - **Painel de atividades:** **Fila** (em aberto, do que pede ação primeiro: selos das 5 etapas, prazo para concluir e
   pendências), **Mês vigente**, **Controle** e **Pós-implantação**.
 - **Depois da conclusão:** **Aguardando Carteira** (gestão), **Fichas de transição** e **Antecipações**.
