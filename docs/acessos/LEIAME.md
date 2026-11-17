@@ -28,7 +28,7 @@ um papel que aparece em mais de uma tela (ex.: Executivo, Gestão do Comercial) 
 | Equipe de implantação | conduz as implantações | setor Implantação | administração e gestão desse setor |
 | Jurídico | recebe as demandas jurídicas | setor Jurídico | administração e gestão desse setor |
 | Elabora contratos | redige as minutas | permissão *Elaborar as minutas de contrato* | administração e gestão do Jurídico |
-| **Gestão do Comercial** | vê (só consulta) as análises e contratos de **todos** os executivos, com os painéis, e as **Implantações em andamento** (só a lista; a implantação abre para leitura) | permissão *Gestão do Comercial* (vem com os perfis **Diretor** e **Gerente** no setor Comercial) | administração, **diretoria** e **gerência** do Comercial |
+| **Gestão do Comercial** | vê (só consulta) as análises e contratos de **todos** os executivos, com os painéis, e, no Painel de implantação, só a aba **Em andamento** (a implantação abre para leitura) | permissão *Gestão do Comercial* (vem com os perfis **Diretor** e **Gerente** no setor Comercial) | administração, **diretoria** e **gerência** do Comercial |
 | **Chancela de crédito** | diretoria: chancela as análises com inadimplência entre 35% e 40% ou sem o custo atual do boleto | permissão *Chancela de crédito* | só a administração |
 | **Chancela comercial** | diretoria: decide os itens comerciais do contrato (taxa administrativa abaixo de 2%, boleto abaixo de R$ 1,50, cobertura de taxa extra acima de 60%, cláusulas fora do padrão, taxa e boleto do condomínio de entrega) e o percentual fora do padrão nas parcerias | permissão *Chancela comercial* | só a administração |
 
@@ -192,8 +192,8 @@ nas pendências e no retorno, e para a diretoria quando há chancela. Detalhes d
 Tela própria do portal (menu **Painel de implantação**), não é uma ferramenta em HTML. Cada função abre na sua tela:
 a gestão no Dashboard, a equipe no Painel de atividades (filtrado para a própria pessoa) e o comercial em Minhas
 solicitações; a **diretoria** vê as telas da gestão só para consulta. A **Gestão do Comercial** e a gestão da **Cobrança**
-não têm o Painel de implantação: veem a tela **Implantações em andamento** (só a lista em andamento, pelo ano e pela
-competência), com a implantação aberta só para leitura. Quem faz o quê:
+veem só a aba **Em andamento** do Painel de implantação (as implantações em andamento, pelo ano e pela competência),
+com a implantação aberta só para leitura. Quem faz o quê:
 
 | Quem | Como entra | Pode |
 |---|---|---|
@@ -205,7 +205,7 @@ competência), com a implantação aberta só para leitura. Quem faz o quê:
 | **Gestor do Controle de Repasses** | papel **Gestor** na ferramenta *repasses* (*Configurações → Acessos → Ferramentas*) | cadastrar (com ajuste) ou devolver as antecipações vindas da Implantação; enviar o .zip dos comprovantes de repasse de cada assistente de crédito e ver os de todas |
 | **Quem elabora contratos** | permissão *Elaborar as minutas de contrato* | registrar as condições do contrato assinado fora do portal (a implantação espera com o Jurídico e depois segue ao setor) |
 | **Diretoria** | permissão *Chancelar análises de crédito* | ver todas (a taxa e o boleto do condomínio de entrega são aprovados na Solicitação de Contrato) |
-| **Gestão do Comercial** e **quem acompanha as implantações** | permissão *Gestão do Comercial*, ou *Acompanhar as implantações* (padrão: Diretor, Gerente, Coordenador e Supervisor do setor Cobrança; a administração libera outras pessoas) | ver as Implantações em andamento (só a lista em andamento) e abrir a implantação só para leitura |
+| **Gestão do Comercial** e **quem acompanha as implantações** | permissão *Gestão do Comercial*, ou *Acompanhar as implantações* (padrão: Diretor, Gerente, Coordenador e Supervisor do setor Cobrança; a administração libera outras pessoas) | ver a aba Em andamento do Painel de implantação (só ela) e abrir a implantação só para leitura |
 | **Administração** | perfil | tudo |
 
 Detalhes em `docs/implantacao/LEIAME.md`.

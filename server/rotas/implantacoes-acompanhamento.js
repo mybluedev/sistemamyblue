@@ -3,7 +3,7 @@
  * Acompanhamento da implantação: painel, mês vigente, metas de onboarding e de documentação, antecipações, pós-implantação e os
  * parâmetros das metas (com histórico). As regras estão em server/implantacoes/metas.js.
  *
- * Quem vê: setor Implantação, coordenação, diretoria e administração (a tela Implantações em andamento tem a sua regra). Parâmetros e a meta de documentação marcada à mão:
+ * Quem vê: setor Implantação, coordenação, diretoria e administração (a aba Em andamento tem a sua regra). Parâmetros e a meta de documentação marcada à mão:
  * coordenação e administração. Cobrar documentos (só ao executivo): o setor, a coordenação e a administração.
  */
 const { situacoesAntecipacao } = require('./implantacoes-antecipacoes');
@@ -113,33 +113,22 @@ function rotasAcompanhamento(r, { db, seg, avisos, perfil, erro, evento, json, f
     });
   });
 
-  /* Implantações em andamento (só consulta), pelo ano e pela competência (mês do início do contrato). A diretoria vê completo
-     (números e gráficos do Dashboard e a lista toda); a Gestão do Comercial e a gestão da Cobrança, só a lista em andamento. */
+  /* aba Em andamento do Painel de implantação (só consulta), para a Gestão do Comercial e a gestão da Cobrança: as implantações
+     em andamento, pelo ano e pela competência (mês do início do contrato), do 1º vencimento mais próximo */
   r.get('/api/implantacoes/andamento', async (req, res) => {
     const p = await perfil(req.usuario);
-    if (!p.acompanha) return erro(res, 403, 'As Implantações em andamento são da diretoria, da Gestão do Comercial e de quem tem "Acompanhar as implantações".');
-    const completo = p.acompanha === 'completo';
+    if (!p.acompanha) return erro(res, 403, 'A aba Em andamento é da Gestão do Comercial e de quem tem "Acompanhar as implantações".');
     const hoje = M.diaSP(Date.now());
     const linhas = (await carregarLinhas(db, { hoje })).map(({ _bruto, ...l }) => l);
     const q = req.query || {};
     const ano = Number(q.ano) || Number(hoje.slice(0, 4));
     const mes = Number(q.mes) >= 1 && Number(q.mes) <= 12 ? Number(q.mes) : null;
-    const aberta = (l) => !['concluida', 'na_carteira'].includes(l.etapa);
-    const base = linhas.filter((l) => l.inicio.slice(0, 4) === String(ano) && (!mes || Number(l.inicio.slice(5, 7)) === mes) && (completo || aberta(l)));
-    const ate15 = M.somarDias(hoje, 15);
-    const lista = base.sort((a, b) => a.primeiro_vencimento.localeCompare(b.primeiro_vencimento) || a.condominio.localeCompare(b.condominio)).map((l) => ({
-      id: l.id, condominio: l.condominio, uf: l.uf, uh_total: l.uh_total, executivo_nome: l.executivo_nome, responsavel_nome: l.responsavel_nome, etapa: l.etapa,
-      inicio: l.inicio, dia_vencimento: l.dia_vencimento, primeiro_vencimento: l.primeiro_vencimento, vencimento_previsto: l.vencimento_previsto,
-      feitas: l.feitas, pct: l.pct, aberta: aberta(l), onboarding: { situacao: l.onboarding.situacao, data: l.onboarding.data, hora: l.onboarding.hora },
-    }));
-    const out = { hoje, ano, mes, completo, anos: [...new Set([ano, ...linhas.map((l) => Number(l.inicio.slice(0, 4)))])].sort(), lista };
-    if (completo) {
-      const andando = lista.filter((l) => l.aberta);
-      out.painel = M.painel(linhas, { ano, mes });
-      out.vencendo = { proximos: andando.filter((l) => l.primeiro_vencimento >= hoje && l.primeiro_vencimento <= ate15).length,
-        vencidos: andando.filter((l) => l.primeiro_vencimento < hoje).length };
-    }
-    res.json(out);
+    const lista = linhas.filter((l) => !['concluida', 'na_carteira'].includes(l.etapa) && l.inicio.slice(0, 4) === String(ano) && (!mes || Number(l.inicio.slice(5, 7)) === mes))
+      .sort((a, b) => a.primeiro_vencimento.localeCompare(b.primeiro_vencimento) || a.condominio.localeCompare(b.condominio))
+      .map((l) => ({ id: l.id, condominio: l.condominio, uf: l.uf, uh_total: l.uh_total, executivo_nome: l.executivo_nome, responsavel_nome: l.responsavel_nome, etapa: l.etapa,
+        inicio: l.inicio, dia_vencimento: l.dia_vencimento, primeiro_vencimento: l.primeiro_vencimento, vencimento_previsto: l.vencimento_previsto,
+        feitas: l.feitas, pct: l.pct, onboarding: { situacao: l.onboarding.situacao, data: l.onboarding.data, hora: l.onboarding.hora } }));
+    res.json({ hoje, ano, mes, anos: [...new Set([ano, ...linhas.map((l) => Number(l.inicio.slice(0, 4)))])].sort(), lista });
   });
 
   /* Excel da aba aberta: a tela manda as colunas e as linhas como estão (com os filtros) */

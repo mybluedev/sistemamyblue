@@ -363,7 +363,7 @@ test('Carteira: a coordenação confere os dados (ID Vouch e envio vêm das etap
   assert.equal((await equipe('PATCH', `/api/implantacoes/${idI2}/etapas`, { etapas: { vouch: { id: '90001' } } })).status, 409);
 });
 
-test('Implantações em andamento: a diretoria vê completo; Gestão do Comercial e gestão da Cobrança, só a lista em andamento, e abrem só para leitura', async () => {
+test('aba Em andamento: só a Gestão do Comercial e a gestão da Cobrança, com as em andamento, e a implantação abre só para leitura', async () => {
   const gestor = async (nome, email, papel, setor) => {
     const c = await pessoa(nome, email);
     await ctx.db.q('UPDATE usuarios SET papel = $2 WHERE id = $1', [ids[email], papel]);
@@ -383,9 +383,7 @@ test('Implantações em andamento: a diretoria vê completo; Gestão do Comercia
     assert.deepEqual([rs.acesso, rs.painel, rs.andamento], [true, false, true]);
     const r = await c('GET', '/api/implantacoes/andamento?ano=2026');
     assert.equal(r.status, 200, r.texto);
-    assert.equal(r.json.completo, false);
-    assert.equal(r.json.painel, undefined);
-    assert.ok(r.json.lista.length && r.json.lista.every((l) => l.aberta));
+    assert.ok(r.json.lista.length && r.json.lista.every((l) => !['concluida', 'na_carteira'].includes(l.etapa)));
     assert.ok(!r.json.lista.some((l) => l.id === idI)); // a concluída não aparece
     // abre a implantação só para leitura
     const d = await c('GET', `/api/implantacoes/${idI2}`);
@@ -393,16 +391,14 @@ test('Implantações em andamento: a diretoria vê completo; Gestão do Comercia
     const acoes = Object.entries(d.json.pode).filter(([k, v]) => v && !['ver', 'interno'].includes(k)).map(([k]) => k);
     assert.deepEqual(acoes, []);
   }
-  // a diretoria vê completo: números do Dashboard e todas, concluídas também
-  const r = await dir('GET', '/api/implantacoes/andamento?ano=2026&mes=11');
-  assert.equal(r.status, 200, r.texto);
-  assert.equal(r.json.completo, true);
-  assert.ok(r.json.painel.total >= 2);
-  assert.ok(r.json.lista.some((l) => l.id === idI && !l.aberta));
-  assert.deepEqual(Object.keys(r.json.vencendo), ['proximos', 'vencidos']);
-  assert.equal((await dir('GET', '/api/implantacoes/acompanhamento')).status, 200); // e continua com o Painel de implantação
-  // outra competência: nada
-  assert.deepEqual((await dir('GET', '/api/implantacoes/andamento?ano=2026&mes=3')).json.lista, []);
+  // a competência filtra
+  assert.ok((await gcob('GET', '/api/implantacoes/andamento?ano=2026&mes=11')).json.lista.length);
+  assert.deepEqual((await gcob('GET', '/api/implantacoes/andamento?ano=2026&mes=3')).json.lista, []);
+  // a diretoria fica com o painel de sempre, sem a aba
+  assert.equal((await dir('GET', '/api/implantacoes/andamento')).status, 403);
+  assert.equal((await dir('GET', '/api/implantacoes/acompanhamento')).status, 200);
+  const rd = (await dir('GET', '/api/implantacoes/resumo')).json;
+  assert.deepEqual([rd.painel, rd.andamento], [true, false]);
 });
 
 /* ===================== parte 3: contrato assinado fora do portal ===================== */

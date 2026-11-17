@@ -267,11 +267,8 @@
           '<span>' + esc(rot('juridico_pedidos', 'Solicitações ao Jurídico')) + '</span><i data-contador="jur-pedidos" class="contador" hidden></i></a>' +
         (temPainelJ() ? '<a href="#/juridico/painel" class="' + (rota.indexOf('#/juridico/painel') === 0 ? 'on' : '') + '">' + IC.pasta +
           '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i></a>' : '') +
-        (resumoImp && resumoImp.acesso ? '<div class="grupo">' + esc(rot('grupo_implantacao', 'Implantação')) + '</div>' +
-          (resumoImp.painel !== false ? '<a href="#/implantacao" class="' + (rota.indexOf('#/implantacao') === 0 && rota.indexOf('#/implantacao/andamento') !== 0 ? 'on' : '') + '">' + IC.casa +
-            '<span>' + esc(rot('implantacao', 'Painel de implantação')) + '</span><i data-contador="implantacao" class="contador" hidden></i></a>' : '') +
-          (resumoImp.andamento ? '<a href="#/implantacao/andamento" class="' + (rota.indexOf('#/implantacao/andamento') === 0 ? 'on' : '') + '">' + IC.grafico +
-            '<span>' + esc(rot('implantacao_andamento', 'Implantações em andamento')) + '</span></a>' : '') : '');
+        (resumoImp && resumoImp.acesso ? '<div class="grupo">' + esc(rot('grupo_implantacao', 'Implantação')) + '</div><a href="#/implantacao" class="' + (rota.indexOf('#/implantacao') === 0 ? 'on' : '') + '">' + IC.casa +
+          '<span>' + esc(rot('implantacao', 'Painel de implantação')) + '</span><i data-contador="implantacao" class="contador" hidden></i></a>' : '');
       // Comissões: a ferramenta (só para quem tem acesso) e os demonstrativos de cada pessoa
       var modCom = modulos.find(function (m) { return m.slug === MOD_COMISSAO && m.ativo; });
       var pendC = resumoComissao ? resumoComissao.pendentes + (resumoComissao.planilhas || 0) : 0;
@@ -318,7 +315,7 @@
     { grupo: ['grupo_clientes', 'Clientes'], itens: [['carteira', 'Base de Clientes']] },
     { grupo: ['grupo_credito', 'Análise de Crédito'], itens: [['credito', 'Análise de Crédito']] },
     { grupo: ['grupo_juridico', 'Jurídico'], itens: [['juridico_pedidos', 'Solicitações ao Jurídico'], ['juridico_painel', 'Painel do Jurídico']] },
-    { grupo: ['grupo_implantacao', 'Implantação'], itens: [['implantacao', 'Painel de implantação'], ['implantacao_andamento', 'Implantações em andamento']] },
+    { grupo: ['grupo_implantacao', 'Implantação'], itens: [['implantacao', 'Painel de implantação']] },
     { grupo: ['grupo_premiacoes', 'Premiações'], itens: [['minhas_premiacoes', 'Minhas Premiações']], ferramenta: 'premiacoes' },
     { itens: [['configuracoes', 'Configurações']] },
   ];
@@ -381,7 +378,6 @@
     if (partes[0] === 'credito') return /^\d+$/.test(partes[1] || '') ? paginaAnaliseCredito(Number(partes[1])) : paginaCredito(partes[1]);
     // o Acompanhamento virou parte do Painel de implantação
     if (partes[0] === 'acompanhamento') { location.replace('#/implantacao/' + (ANTIGAS_ACOMP[partes[1]] || 'dashboard')); return; }
-    if (partes[0] === 'implantacao' && partes[1] === 'andamento') return paginaAndamentoImp();
     if (partes[0] === 'implantacao') return /^\d+$/.test(partes[1] || '') ? (partes[2] === 'ficha' ? paginaFichaImp(Number(partes[1])) : paginaImplantacaoDetalhe(Number(partes[1]))) : paginaImplantacao(partes[1], partes[2]);
     // Jurídico: Solicitações ao Jurídico (#/juridico/pedidos), Painel do Jurídico (#/juridico/painel/<aba>/<sub>) e uma demanda (#/juridico/demanda/<id>)
     if (partes[0] === 'juridico') return partes[1] === 'demanda' && /^\d+$/.test(partes[2] || '') ? paginaJuridico('', '', '', Number(partes[2])) : paginaJuridico(partes[1], partes[2], partes[3]);
@@ -4793,7 +4789,7 @@
      Gestão (coordenação; a diretoria só consulta): abre no Dashboard. Assistente de implantação: abre no Painel de atividades,
      filtrado para ela. Comercial: Minhas solicitações. O Dashboard só tem indicadores e as pendências para acompanhar;
      as listas de trabalho ficam no Painel de atividades (Fila, Mês vigente, Controle, Pós-implantação) e em Depois da conclusão. */
-  var ABAS_PAINEL = [['dashboard', 'Dashboard', 'grafico'], ['atividades', 'Painel de atividades', 'camadas'], ['depois', 'Depois da conclusão', 'enviar'], ['minhas', 'Minhas solicitações', 'documento']];
+  var ABAS_PAINEL = [['dashboard', 'Dashboard', 'grafico'], ['atividades', 'Painel de atividades', 'camadas'], ['depois', 'Depois da conclusão', 'enviar'], ['minhas', 'Minhas solicitações', 'documento'], ['andamento', 'Em andamento', 'olho']];
   var VISOES_ATIV = [['fila', 'Fila'], ['mes', 'Mês vigente'], ['controle', 'Controle'], ['pos', 'Pós-implantação']];
   var VISOES_DEPOIS = [['carteira', 'Aguardando a Base de Clientes'], ['fichas', 'Fichas de transição'], ['antecipacoes', 'Antecipações']];
   // endereços antigos (Implantação e Acompanhamento) levam ao lugar novo
@@ -4825,16 +4821,15 @@
     var comercial = !!(p.executivo || p.admin);
     var gestao = !!(p.coordenacao || p.diretoria || p.admin);
     if (ANTIGAS_IMP[aba]) { location.replace('#/implantacao/' + ANTIGAS_IMP[aba]); return; }
-    var abas = ABAS_PAINEL.filter(function (a) { return a[0] === 'minhas' ? comercial : interno; });
-    // quem só acompanha (Gestão do Comercial, gestão da Cobrança) tem as Implantações em andamento
-    if (!abas.length && p.acompanha) { location.replace('#/implantacao/andamento'); return; }
+    // Em andamento: só a Gestão do Comercial e a gestão da Cobrança (só consulta); quem só acompanha vê só ela
+    var abas = ABAS_PAINEL.filter(function (a) { return a[0] === 'minhas' ? comercial : a[0] === 'andamento' ? !!p.acompanha : interno; });
     if (!abas.length) {
       $('#conteudo').innerHTML = '<div class="pagina"><h1>Painel de implantação</h1><div class="vazio">Você ainda não tem acesso à Implantação. Executivos são marcados em Configurações → Acessos → Análise de Crédito; a equipe é quem está no setor Implantação.</div></div>';
       return;
     }
     var podeParam = !!(p.coordenacao || p.admin);
     if (aba === 'parametros' && !interno) aba = '';
-    if (aba !== 'parametros' && !abas.some(function (a) { return a[0] === aba; })) aba = !interno ? 'minhas' : gestao ? 'dashboard' : 'atividades';
+    if (aba !== 'parametros' && !abas.some(function (a) { return a[0] === aba; })) aba = !interno ? (comercial ? 'minhas' : 'andamento') : gestao ? 'dashboard' : 'atividades';
     var lista = aba === 'atividades' ? VISOES_ATIV : aba === 'depois' ? VISOES_DEPOIS.filter(function (v) { return v[0] !== 'carteira' || gestao; }) : null;
     if (lista && !lista.some(function (v) { return v[0] === visao; })) visao = lembrar('painel.' + aba, lista[0][0]);
     if (lista && !lista.some(function (v) { return v[0] === visao; })) visao = lista[0][0];
@@ -4847,6 +4842,7 @@
     definirBarra('<span class="setor">Painel de implantação</span><span class="sep">/</span><span class="nome">' + esc(nomeAba + (nomeVisao ? ' · ' + nomeVisao : '')) + '</span>');
 
     if (aba === 'minhas') return minhasImp(abas, p);
+    if (aba === 'andamento') return andamentoImp(abas);
     var f = filtroAcomp, j;
     if (!$('#corpoAcomp')) $('#conteudo').innerHTML = '<div class="pagina" style="max-width:1400px"><div class="vazio">Carregando…</div></div>';
     try {
@@ -4913,11 +4909,10 @@
     atualizarImp();
   }
 
-  /* ---------- Implantações em andamento (só consulta): o ano e a competência (mês do início do contrato) mudam a tela toda.
-     Diretoria: os números e os gráficos do Dashboard e a lista (em andamento, concluídas ou todas). Gestão do Comercial e da
-     Cobrança: só a lista em andamento. Clicar abre a implantação só para leitura. ---------- */
+  /* ---------- Em andamento (Gestão do Comercial e da Cobrança, só consulta): as implantações em andamento pelo ano e pela
+     competência (mês do início do contrato), do 1º vencimento mais próximo. Clicar abre a implantação só para leitura. ---------- */
   var SIT_ANDAMENTO = { juridico: ['No Jurídico (conferência do contrato)', 'cinza'], fila: ['Na fila do setor', 'cinza'], em_implantacao: ['Em implantação', 'azul'],
-    pendencia: ['Pendência com o comercial', 'ambar'], concluida: ['Concluída · indo para a Base de Clientes', 'verde'], na_carteira: ['Na Base de Clientes', 'verde'] };
+    pendencia: ['Pendência com o comercial', 'ambar'] };
   function onbAndamento(o) {
     var d = o.data ? dataBr(o.data).slice(0, 5) + (o.hora ? ' · ' + o.hora : '') : '';
     if (o.situacao === 'realizado') return '✓ ' + (d || 'realizado');
@@ -4926,95 +4921,43 @@
     if (o.situacao === 'sindico_myblue') return 'síndico MyBlue';
     return '—';
   }
-  async function paginaAndamentoImp() {
+  async function andamentoImp(abas) {
     var chave = 'andamento.filtros.' + (eu ? eu.id : 0);
-    var f = Object.assign({ ano: '', mes: '', aba: 'andamento' }, lembrar(chave, {}));
-    var guardar = function () { try { localStorage.setItem('portal.' + chave, JSON.stringify(f)); } catch (e) { /* sem armazenamento */ } };
-    definirBarra('<span class="setor">Implantação</span><span class="sep">/</span><span class="nome">Implantações em andamento</span>');
-    if (!$('#corpoAndamento')) $('#conteudo').innerHTML = '<div class="pagina" style="max-width:1400px"><div class="vazio">Carregando…</div></div>';
+    var f = Object.assign({ ano: '', mes: '' }, lembrar(chave, {}));
     var j;
     try { j = await api('GET', '/api/implantacoes/andamento?ano=' + encodeURIComponent(f.ano) + '&mes=' + encodeURIComponent(f.mes)); }
-    catch (e) { $('#conteudo').innerHTML = '<div class="pagina"><h1>Implantações em andamento</h1><div class="vazio">' + esc(e.message) + '</div></div>'; return; }
+    catch (e) { $('#conteudo').innerHTML = '<div class="pagina"><h1>Painel de implantação</h1><div class="vazio">' + esc(e.message) + '</div></div>'; return; }
     f.ano = String(j.ano);
-    if (!j.completo) f.aba = 'andamento';
     var opcoes = function (lista, valor) { return lista.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(valor) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); };
+    var hoje = j.hoje, periodo = (f.mes ? MESES_LONGO[f.mes - 1].toLowerCase() + ' de ' : '') + j.ano;
+    var dias = function (d) { return Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) - Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7) - 1, +hoje.slice(8, 10))) / 864e5); };
     $('#conteudo').innerHTML = '<div class="pagina" style="max-width:1400px">' +
-      '<div class="cab-acomp"><div class="tit-acomp"><h1>Implantações em andamento</h1><p class="sub" style="margin:0">Os condomínios que estão sendo implantados: andamento, vencimentos e quem cuida de cada um. <b>Só consulta.</b></p></div>' +
-      '<span class="espaco"></span>' + (j.completo ? '<button class="btn ghost" id="anExcel">' + IC.baixar + 'Excel</button>' : '') + '</div>' +
+      '<div class="cab-acomp"><div class="tit-acomp"><h1>Painel de implantação</h1><p class="sub" style="margin:0">Os condomínios que estão sendo implantados: andamento, vencimentos e quem cuida de cada um. <b>Só consulta.</b></p></div></div>' +
+      (abas.length > 1 ? '<nav class="abas abas-acomp">' + abas.map(function (a) { return '<a href="#/implantacao/' + a[0] + '" class="' + (a[0] === 'andamento' ? 'on' : '') + '">' + (IC[a[2]] || '') + esc(a[1]) + '</a>'; }).join('') + '</nav>'
+        : '<nav class="abas abas-acomp"><a href="#/implantacao/andamento" class="on">' + IC.olho + 'Em andamento</a></nav>') +
       '<div class="filtros-acomp"><span class="rot-ano">Ano</span>' +
       '<select class="sel-pilula cheio" id="anAno" aria-label="Ano">' + opcoes(j.anos.map(function (a) { return [a, a]; }), f.ano) + '</select>' +
       '<select class="sel-pilula" id="anMes" aria-label="Competência">' + opcoes([['', 'Todas as competências']].concat(MESES_LONGO.map(function (m, k) { return [k + 1, m]; })), f.mes) + '</select>' +
-      '<span class="ajuda" style="margin:0">' + (j.completo ? 'o ano e a competência (mês do início do contrato) mudam a tela toda: números, gráficos e a lista' : 'a competência é o mês do início do contrato') + '</span></div>' +
-      '<div id="corpoAndamento"></div></div>';
-    var recarregar = function () { guardar(); paginaAndamentoImp(); };
-    $('#anAno').onchange = function () { f.ano = this.value; recarregar(); };
-    $('#anMes').onchange = function () { f.mes = this.value; recarregar(); };
-    var hoje = j.hoje, periodo = (f.mes ? MESES_LONGO[f.mes - 1].toLowerCase() + ' de ' : '') + j.ano;
-    var dias = function (d) { return Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) - Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7) - 1, +hoje.slice(8, 10))) / 864e5); };
-    var desenhar = function () {
-      var lista = j.lista.filter(function (l) { return f.aba === 'todas' || (f.aba === 'concluidas' ? !l.aberta : l.aberta); });
-      var html = '';
-      if (j.completo) {
-        var p = j.painel, max = Math.max.apply(null, p.mensal.map(function (x) { return x.contratos; }).concat([1]));
-        html += '<div class="cards-acomp">' +
-          tileAcomp('Contratos ' + (f.mes ? MESES_ACOMP[f.mes - 1] + '/' : '') + j.ano, p.total, p.mes_mais && !f.mes ? p.mes_mais.contratos + ' em ' + MESES_LONGO[p.mes_mais.mes - 1].toLowerCase() + ', o maior mês' : 'em ' + periodo) +
-          tileAcomp('Concluídos', p.concluidos, p.total ? Math.round(p.concluidos * 100 / p.total) + '% dos contratos' : '', { barra: p.total ? p.concluidos * 100 / p.total : 0 }) +
-          tileAcomp('Em andamento', p.andamento, 'entre 1% e 99%') +
-          tileAcomp('Não iniciados', p.nao_iniciados, 'na fila ou sem etapa feita', { cor: p.nao_iniciados ? 'red' : '' }) +
-          tileAcomp('1º vencimento em 15 dias', j.vencendo.proximos, j.vencendo.vencidos ? 'e ' + j.vencendo.vencidos + ' já passaram, ainda em implantação' : 'condomínios ainda em implantação', { cor: j.vencendo.proximos ? 'amber' : '' }) + '</div>' +
-          '<div class="linha" style="gap:16px;align-items:stretch;margin-bottom:16px">' +
-          '<section class="painel" style="flex:1 1 420px"><div class="cab-painel"><h2>Progresso por etapa</h2><span class="espaco"></span>' + (p.gargalo && p.total ? etq(['Principal gargalo: ' + p.gargalo.nome, 'ambar']) : '') + '</div><div style="padding:8px 0">' +
-          p.por_etapa.map(function (x) {
-            return '<div class="barra-acomp"><span>' + esc(x.nome) + '</span><span class="trilho-acomp"><i style="width:' + x.pct + '%' + (p.gargalo && x.etapa === p.gargalo.etapa && p.total ? ';background:var(--amber)' : '') + '"></i></span><b>' + x.pct + '%</b></div>';
-          }).join('') + '</div><p class="ajuda" style="margin:0;padding:8px 16px 14px">% de contratos com a etapa feita. O gargalo é a etapa com o menor percentual.</p></section>' +
-          '<section class="painel" style="flex:2 1 560px"><div class="cab-painel"><h2>Contratos e concluídos por mês · ' + j.ano + '</h2><span class="espaco"></span>' +
-          '<span class="legenda-acomp"><i style="background:#0b76ba"></i>Contratos</span><span class="legenda-acomp"><i style="background:#d98a1b"></i>Concluídos</span></div>' +
-          '<div class="grafico-acomp" role="img" aria-label="Contratos e concluídos por mês em ' + j.ano + '">' + p.mensal.map(function (x) {
-            var h = function (v) { return Math.round(v * 180 / max); };
-            return '<div class="mes-acomp"' + (f.mes && Number(f.mes) !== x.mes ? ' style="opacity:.3"' : '') + '><div class="bs"><i style="height:' + h(x.contratos) + 'px;background:#0b76ba" title="' + MESES_LONGO[x.mes - 1] + ': ' + x.contratos + ' contrato(s)"></i>' +
-              '<i style="height:' + h(x.concluidos) + 'px;background:#d98a1b" title="' + MESES_LONGO[x.mes - 1] + ': ' + x.concluidos + ' concluído(s)"></i></div>' +
-              '<span class="m">' + MESES_ACOMP[x.mes - 1] + '</span><span class="v">' + (x.contratos ? x.contratos + ' · ' + x.concluidos : '—') + '</span></div>';
-          }).join('') + '</div><p class="ajuda" style="margin:0;padding:8px 16px 14px">Embaixo de cada mês: contratos · concluídos (pelo início do contrato).</p></section></div>';
-      }
-      var abas = [['andamento', 'Em andamento'], ['concluidas', 'Concluídas'], ['todas', 'Todas']];
-      var nAbertas = j.lista.filter(function (l) { return l.aberta; }).length;
-      html += '<section class="painel"><div class="cab-painel"><h2>Condomínios em implantação</h2><span class="espaco"></span>' +
-        (j.completo ? '<div class="visoes-painel" style="margin:0">' + abas.map(function (a) {
-          return '<button class="pilula-acomp' + (a[0] === f.aba ? ' on' : '') + '" data-aba-an="' + a[0] + '">' + a[1] + (a[0] === 'andamento' ? ' <span class="n">' + nAbertas + '</span>' : '') + '</button>';
-        }).join('') + '</div>' : '<span class="sec"><b>' + nAbertas + '</b> em andamento</span>') + '</div>' +
-        '<div class="tabela-wrap"><table><thead><tr><th style="min-width:190px">Condomínio</th><th>Executivo</th><th>Assistente</th><th>Início</th><th class="num">Venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
-        (lista.map(function (l) {
-          var d = dias(l.primeiro_vencimento);
-          var quando = !l.aberta ? '' : d < 0 ? etq(['venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias'), 'vermelha']) : d === 0 ? etq(['vence hoje', 'vermelha']) : d <= 15 ? etq(['em ' + d + (d === 1 ? ' dia' : ' dias'), 'ambar']) : '<span class="sec">em ' + d + ' dias</span>';
-          return '<tr class="clicavel" data-imp="' + l.id + '" title="Abrir a implantação (só leitura)"><td><b>' + esc(l.condominio || 'Sem nome') + '</b><span class="sec">' + esc([l.uf, l.uh_total ? l.uh_total + ' unidades' : ''].filter(Boolean).join(' · ')) + '</span></td>' +
-            '<td>' + esc(l.executivo_nome || '—') + '</td><td>' + (l.responsavel_nome ? esc(l.responsavel_nome) : '<span class="sec">aguardando designação</span>') + '</td>' +
-            '<td>' + esc(dataBr(l.inicio).slice(3)) + '</td><td class="num">' + (l.dia_vencimento ? 'dia ' + l.dia_vencimento : '—') + '</td>' +
-            '<td><b>' + esc(dataBr(l.primeiro_vencimento)) + '</b>' + (l.vencimento_previsto ? ' ' + etq(['previsto', 'cinza']) : '') + (quando ? '<span class="sec">' + quando + '</span>' : '') + '</td>' +
-            '<td>' + selosImp(l.feitas) + '<span class="sec">' + l.pct + '% concluído</span></td><td>' + esc(onbAndamento(l.onboarding)) + '</td>' +
-            '<td>' + etq(SIT_ANDAMENTO[l.etapa] || [l.etapa, 'cinza']) + '</td></tr>';
-        }).join('') || '<tr><td colspan="9" class="vazio">Nenhuma implantação ' + (f.aba === 'concluidas' ? 'concluída' : f.aba === 'todas' ? '' : 'em andamento') + ' em ' + periodo + '.</td></tr>') +
-        '</tbody></table></div><p class="ajuda" style="margin:0;padding:10px 16px 14px">Ordenado pelo 1º vencimento. "Previsto": o 1º vencimento ainda não foi informado e foi calculado pelo dia de vencimento e o início do contrato. ' +
-        'Etapas: documentação, Vouch, onboarding, boletos e envio (verde = feita). Clique na linha para abrir a implantação (só leitura).</p></section>';
-      $('#corpoAndamento').innerHTML = html;
-      $$('[data-aba-an]').forEach(function (b) { b.onclick = function () { f.aba = b.getAttribute('data-aba-an'); guardar(); desenhar(); }; });
-      $$('#corpoAndamento tr[data-imp]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/implantacao/' + tr.getAttribute('data-imp'); }; });
-      exportarAcomp = { nome: 'Implantacoes em andamento ' + j.ano + (f.mes ? '-' + ('0' + f.mes).slice(-2) : ''), abas: [{ titulo: 'Implantações',
-        cab: ['Condomínio', 'UF', 'Unidades', 'Executivo', 'Assistente', 'Início do contrato', 'Vencimento padrão (dia)', '1º vencimento', '1º vencimento previsto', '% concluído', 'Onboarding', 'Situação'],
-        linhas: lista.map(function (l) {
-          return [l.condominio, l.uf, l.uh_total || '', l.executivo_nome, l.responsavel_nome, dataBr(l.inicio), l.dia_vencimento || '', dataBr(l.primeiro_vencimento), l.vencimento_previsto ? 'sim' : 'não', l.pct, onbAndamento(l.onboarding), (SIT_ANDAMENTO[l.etapa] || [l.etapa])[0]];
-        }) }] };
-    };
-    desenhar();
-    if ($('#anExcel')) $('#anExcel').onclick = async function () {
-      try {
-        var r = await fetch('/api/implantacoes/acompanhamento/excel', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(exportarAcomp) });
-        if (!r.ok) { var e = {}; try { e = await r.json(); } catch (x) { /* sem JSON */ } throw new Error(e.erro || 'Erro ' + r.status); }
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(await r.blob());
-        a.download = exportarAcomp.nome + '.xlsx';
-        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-      } catch (e) { toast(e.message, 'erro'); }
-    };
+      '<span class="ajuda" style="margin:0">a competência é o mês do início do contrato</span></div>' +
+      '<section class="painel"><div class="cab-painel"><h2>Condomínios em implantação</h2><span class="espaco"></span><span class="sec"><b>' + j.lista.length + '</b> em andamento</span></div>' +
+      '<div class="tabela-wrap"><table><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
+      (j.lista.map(function (l) {
+        var d = dias(l.primeiro_vencimento);
+        var quando = d < 0 ? etq(['venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias'), 'vermelha']) : d === 0 ? etq(['vence hoje', 'vermelha']) : d <= 15 ? etq(['em ' + d + (d === 1 ? ' dia' : ' dias'), 'ambar']) : '<span class="sec">em ' + d + ' dias</span>';
+        return '<tr class="clicavel" data-imp="' + l.id + '" title="Abrir a implantação (só leitura)"><td><b>' + esc(l.condominio || 'Sem nome') + '</b><span class="sec">' + esc([l.uf, l.uh_total ? l.uh_total + ' unidades' : ''].filter(Boolean).join(' · ')) + '</span>' +
+          (l.executivo_nome ? '<span class="sec">' + esc(l.executivo_nome) + '</span>' : '') + '</td>' +
+          '<td>' + (l.responsavel_nome ? esc(l.responsavel_nome) : '<span class="sec">aguardando designação</span>') + '</td>' +
+          '<td>' + esc(dataBr(l.inicio).slice(3)) + '<span class="sec">' + (l.dia_vencimento ? 'vence todo dia ' + l.dia_vencimento : 'sem dia de vencimento') + '</span></td>' +
+          '<td><b>' + esc(dataBr(l.primeiro_vencimento)) + '</b>' + (l.vencimento_previsto ? ' ' + etq(['previsto', 'cinza']) : '') + '<span class="sec">' + quando + '</span></td>' +
+          '<td>' + selosImp(l.feitas) + '<span class="sec">' + l.pct + '% concluído</span></td><td>' + esc(onbAndamento(l.onboarding)) + '</td>' +
+          '<td>' + etq(SIT_ANDAMENTO[l.etapa] || [l.etapa, 'cinza']) + '</td></tr>';
+      }).join('') || '<tr><td colspan="7" class="vazio">Nenhuma implantação em andamento em ' + periodo + '.</td></tr>') +
+      '</tbody></table></div><p class="ajuda" style="margin:0;padding:10px 16px 14px">Ordenado pelo 1º vencimento. "Previsto": o 1º vencimento ainda não foi informado e foi calculado pelo dia de vencimento e o início do contrato. ' +
+      'Etapas: documentação, Vouch, onboarding, boletos e envio (verde = feita). Clique na linha para abrir a implantação (só leitura).</p></section></div>';
+    var mudar = function () { try { localStorage.setItem('portal.' + chave, JSON.stringify(f)); } catch (e) { /* sem armazenamento */ } andamentoImp(abas); };
+    $('#anAno').onchange = function () { f.ano = this.value; mudar(); };
+    $('#anMes').onchange = function () { f.mes = this.value; mudar(); };
+    $$('#conteudo tr[data-imp]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/implantacao/' + tr.getAttribute('data-imp'); }; });
   }
 
   /* ---------- Dashboard: só indicadores e as pendências para acompanhar (as listas de trabalho ficam no Painel de atividades) ---------- */
@@ -7037,7 +6980,7 @@
     }
     var i = d.implantacao, pd = d.pode;
     var recarregar = function () { paginaImplantacaoDetalhe(id); atualizarImp(); };
-    // quem só acompanha (Implantações em andamento) volta para lá
+    // quem só acompanha (aba Em andamento) volta para ela
     var pm = m.perfil, soAcompanha = !!pm.acompanha && !(pm.admin || pm.equipe || pm.coordenacao || pm.diretoria || pm.executivo);
     var voltar = soAcompanha ? '#/implantacao/andamento' : '#/implantacao';
     var acoes = '<a class="btn ghost sm" href="' + voltar + '">Voltar</a>' +
@@ -7050,7 +6993,7 @@
     if (pd.concluir) acoes += '<button class="btn primary sm" id="btConclImp"' + (d.faltas_etapas.length ? ' disabled title="' + esc(d.faltas_etapas.join(' ')) + '"' : '') + '>Concluir implantação</button>';
     if (pd.carteira) acoes += '<button class="btn primary sm" id="btCartImp">Confirmar na Base de Clientes</button>';
     if (pd.apagar) acoes += '<button class="btn danger sm" id="btApagarImp" title="Apagar de vez (só a administração; para limpar testes)">Apagar</button>';
-    definirBarra('<span class="setor">' + (soAcompanha ? 'Implantações em andamento' : 'Painel de implantação') + '</span><span class="sep">/</span><span class="nome">' + esc(i.protocolo || (i.numero_planilha ? 'Nº ' + i.numero_planilha : 'Rascunho')) + '</span>', acoes);
+    definirBarra('<span class="setor">Painel de implantação</span><span class="sep">/</span><span class="nome">' + esc(i.protocolo || (i.numero_planilha ? 'Nº ' + i.numero_planilha : 'Rascunho')) + '</span>', acoes);
     var difs = {};
     d.diferencas.forEach(function (x) { difs[x.campo] = x; });
     var fmtDif = function (x) {
