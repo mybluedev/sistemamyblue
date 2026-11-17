@@ -341,10 +341,64 @@ test('Carteira: a coordenação confere os dados (ID Vouch e envio vêm das etap
   assert.deepEqual([c.sindico_nome, c.sindico_telefone, c.sindico_email], [p.dados.sindico_nome, p.dados.sindico_telefone, p.dados.sindico_email]);
   assert.equal((await coord('GET', `/api/implantacoes/${idI}`)).json.implantacao.etapa, 'na_carteira');
   assert.equal((await coord('POST', `/api/implantacoes/${idI}/carteira`, { dados: p.dados })).status, 403);
+  // incluído direto na Base de Clientes: a coordenação liga a implantação ao cadastro, sem criar outro
+  await ctx.db.q("UPDATE implantacoes SET etapa = 'concluida', condominio_id = NULL WHERE id = $1", [idI]);
+  await ctx.db.q("UPDATE condominios SET sindico_nome = '', sindico_email = '' WHERE id = $1", [c.id]);
+  const total = async () => Number((await ctx.db.um('SELECT COUNT(*) AS n FROM condominios')).n);
+  const antes = await total();
+  assert.deepEqual((await coord('GET', `/api/implantacoes/${idI}/carteira`)).json.duplicados.map((x) => x.id), [c.id]);
+  assert.equal((await coord('POST', `/api/implantacoes/${idI}/carteira`, { dados: p.dados })).status, 409); // incluir de novo, não
+  const outro = await ctx.db.um("INSERT INTO condominios (codigo, nome) VALUES ('90999', 'Outro Fictício') RETURNING id");
+  assert.equal((await coord('POST', `/api/implantacoes/${idI}/carteira`, { vincular: outro.id })).status, 400); // sem o mesmo ID nem CNPJ
+  const lig = await coord('POST', `/api/implantacoes/${idI}/carteira`, { vincular: c.id });
+  assert.equal(lig.status, 200, lig.texto);
+  const il = (await coord('GET', `/api/implantacoes/${idI}`)).json.implantacao;
+  assert.deepEqual([il.etapa, il.condominio_id], ['na_carteira', c.id]);
+  const cl = await ctx.db.um('SELECT * FROM condominios WHERE id = $1', [c.id]);
+  assert.deepEqual([cl.nome, cl.sindico_nome, cl.sindico_telefone, cl.sindico_email], ['Residencial Fictício', p.dados.sindico_nome, p.dados.sindico_telefone, p.dados.sindico_email]);
+  assert.equal(await total(), antes + 1); // só o "Outro Fictício" do teste
   // o mesmo ID Vouch não entra em outra implantação
   await coord('POST', `/api/implantacoes/${idI2}/designar`, { usuario_id: ids['equipe@teste.com'] });
   await equipe('POST', `/api/implantacoes/${idI2}/iniciar`, {});
   assert.equal((await equipe('PATCH', `/api/implantacoes/${idI2}/etapas`, { etapas: { vouch: { id: '90001' } } })).status, 409);
+});
+
+test('aba Em andamento: só a Gestão do Comercial e a gestão da Cobrança, com as em andamento, e a implantação abre só para leitura', async () => {
+  const gestor = async (nome, email, papel, setor) => {
+    const c = await pessoa(nome, email);
+    await ctx.db.q('UPDATE usuarios SET papel = $2 WHERE id = $1', [ids[email], papel]);
+    await noSetor(setor, email, false);
+    return c;
+  };
+  const gcom = await gestor('Gerente Comercial Fictício', 'gcom@teste.com', 'gerente', 'Comercial');
+  const gcob = await gestor('Supervisora de Cobrança Fictícia', 'gcob@teste.com', 'supervisor', 'Cobrança');
+  const dir = await pessoa('Diretoria Fictícia', 'dir-imp@teste.com');
+  assert.equal((await admin('PUT', '/api/credito/diretoria', { pessoas: [ids['dir-imp@teste.com']] })).status, 200);
+
+  assert.equal((await outro('GET', '/api/implantacoes/andamento')).status, 403);
+  for (const c of [gcom, gcob]) {
+    // não têm o Painel de implantação, só a tela nova (só a lista em andamento)
+    assert.equal((await c('GET', '/api/implantacoes/acompanhamento')).status, 403);
+    const rs = (await c('GET', '/api/implantacoes/resumo')).json;
+    assert.deepEqual([rs.acesso, rs.painel, rs.andamento], [true, false, true]);
+    const r = await c('GET', '/api/implantacoes/andamento?ano=2026');
+    assert.equal(r.status, 200, r.texto);
+    assert.ok(r.json.lista.length && r.json.lista.every((l) => !['concluida', 'na_carteira'].includes(l.etapa)));
+    assert.ok(!r.json.lista.some((l) => l.id === idI)); // a concluída não aparece
+    // abre a implantação só para leitura
+    const d = await c('GET', `/api/implantacoes/${idI2}`);
+    assert.equal(d.status, 200, d.texto);
+    const acoes = Object.entries(d.json.pode).filter(([k, v]) => v && !['ver', 'interno'].includes(k)).map(([k]) => k);
+    assert.deepEqual(acoes, []);
+  }
+  // a competência filtra
+  assert.ok((await gcob('GET', '/api/implantacoes/andamento?ano=2026&mes=11')).json.lista.length);
+  assert.deepEqual((await gcob('GET', '/api/implantacoes/andamento?ano=2026&mes=3')).json.lista, []);
+  // a diretoria fica com o painel de sempre, sem a aba
+  assert.equal((await dir('GET', '/api/implantacoes/andamento')).status, 403);
+  assert.equal((await dir('GET', '/api/implantacoes/acompanhamento')).status, 200);
+  const rd = (await dir('GET', '/api/implantacoes/resumo')).json;
+  assert.deepEqual([rd.painel, rd.andamento], [true, false]);
 });
 
 /* ===================== parte 3: contrato assinado fora do portal ===================== */

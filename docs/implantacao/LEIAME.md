@@ -102,7 +102,9 @@ padrões da Análise de Crédito.
 - **Carteira:** a coordenação confere os dados sugeridos (ID Vouch, nome sugerido, UF, vencimento padrão, vigência,
   administradora, forma de envio, executivo, razão social, CNPJ e o **nome, telefone e e-mail do síndico**, do
   formulário e obrigatórios) e confirma; o portal recusa ID ou CNPJ que já estão na
-  Carteira. Os responsáveis (cobrança, extrajudicial, crédito) são escolhidos depois, na ficha do condomínio. O Controle
+  Carteira. Se o condomínio já foi incluído direto na Carteira (mesmo ID Vouch ou CNPJ), a janela mostra o cadastro e o
+  botão **Ligar a este cadastro**: a implantação passa a **Na Carteira** ligada a ele, nada é criado e o cadastro não muda,
+  só recebe o síndico e a assistente de crédito que estiverem em branco (fica no histórico do condomínio). Os responsáveis (cobrança, extrajudicial, crédito) são escolhidos depois, na ficha do condomínio. O Controle
   de Emissão de Boletos acompanha, como em qualquer condomínio novo da Carteira.
 
 ## Ficha de transição
@@ -173,12 +175,19 @@ Os endereços antigos (`#/acompanhamento/...`, `#/implantacao/fila`, `todas`, `c
 | Diretoria | Dashboard | as mesmas telas, **só consulta** (o servidor não deixa agir) |
 | Assistente de implantação (setor) | Painel de atividades → Fila, filtrado para ela ("ver o setor todo" limpa o filtro) | Dashboard com a carteira dela e o percentual das metas |
 | Comercial (executivo) | Minhas solicitações | situação de cada pedido, "Falta de você" e Responder / Enviar documentos / Abrir |
+| Gestão do Comercial e gestão da Cobrança | **Em andamento** (a única aba que veem) | só a lista em andamento, pelo ano e pela competência; a implantação abre só para leitura |
 
 - **Dashboard** (só indicadores): contratos, % médio, concluídos, em andamento e não iniciados; progresso por etapa;
   contratos e concluídos por mês; **Prazo para concluir** (concluídas no prazo, tempo médio e uma tabela por
   assistente com contratos, % médio, concluídas, tempo e no prazo — `linhas[].concluir`); metas de onboarding e de
   documentação em %; por UF e por executivo; **Pendências para acompanhar** (onboarding, do limite mais curto, com
   Cobrar; documentação, com Cobrar o executivo e marcar à mão) e o desempenho do mês na pós-implantação (gestão).
+- **Em andamento** (aba `#/implantacao/andamento`, `GET /api/implantacoes/andamento?ano=&mes=`): só consulta, para os
+  gestores de fora do setor: a **Gestão do Comercial** e quem tem a permissão **Acompanhar as implantações** (padrão:
+  gestão do setor Cobrança; `perfil.acompanha`). Eles veem só esta aba; a diretoria e o setor não a têm. O ano e a
+  competência (mês do início do contrato), em lista suspensa, filtram as implantações em andamento, do 1º vencimento
+  mais próximo: condomínio e executivo, assistente, início e dia de vencimento, 1º vencimento (com "previsto" e quanto
+  falta), etapas, onboarding e situação. Clicar abre a implantação só para leitura (Voltar traz de volta à aba).
 - **Painel de atividades:** **Fila** (em aberto, do que pede ação primeiro: selos das 5 etapas, prazo para concluir e
   pendências), **Mês vigente**, **Controle** e **Pós-implantação**.
 - **Depois da conclusão:** **Aguardando Carteira** (gestão), **Fichas de transição** e **Antecipações**.

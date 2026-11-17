@@ -96,7 +96,11 @@ test('Gestão do Comercial: vem com o perfil Gerente no Comercial e só a gerên
   assert.equal(ct.ve_tudo, true);
   assert.equal(ct.diretoria, false);
   assert.equal((await gerente('GET', '/api/contratos?vis=todas')).status, 200);
-  assert.equal((await gerente('GET', '/api/implantacoes/meta')).json.perfil.diretoria, true, 'vê todas as implantações (consulta)');
+  // na Implantação: só a aba Em andamento do Painel de implantação
+  const im = (await gerente('GET', '/api/implantacoes/meta')).json.perfil;
+  assert.deepEqual([im.diretoria, im.acompanha], [false, true]);
+  assert.equal((await gerente('GET', '/api/implantacoes/acompanhamento')).status, 403);
+  assert.equal((await gerente('GET', '/api/implantacoes/andamento')).status, 200);
 });
 
 test('executivo marcado pela gestão do Comercial passa a pedir análise', async () => {

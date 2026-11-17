@@ -520,6 +520,9 @@ const SETORES = [
     nome: 'Cobrança', arquivo: 'cobranca',
     papel: 'Recupera os valores em atraso dos condomínios: boletos, acordos, negativações e acompanhamento da inadimplência.',
     ferramentas: ['cobranca', 'resultados', 'curadoria', 'espolio', 'hsm', 'hsmOperacional', 'mailing'], carteira: 'analista de cobrança',
+    tambem: [
+      '<b>Painel de implantação → Em andamento</b> (menu <i>Implantação</i>, para a gestão do setor): os condomínios que estão sendo implantados, pelo <b>ano</b> e pela <b>competência</b> (mês do início do contrato), com executivo, assistente, dia de vencimento, <b>1º vencimento</b> (e quanto falta), etapas, onboarding e situação. Clicar abre a implantação <b>só para leitura</b>.',
+    ],
     recebe: [
       ['2ª via de boleto', 4, 'alta', 'Condomínio, unidade, mês de referência e para quem enviar.'],
       ['Proposta de acordo', 18, 'media', 'Unidade, meses em atraso e a proposta do condômino.'],
@@ -540,6 +543,7 @@ const SETORES = [
     tambem: [
       '<b>Solicitação de Contrato</b> (<i>Jurídico → Solicitações ao Jurídico → Novo pedido → Contrato de garantia</i>): fechada a negociação, o executivo pede a minuta a partir da análise liberada, com as condições e as objeções e solicitações do síndico. O Jurídico tem 72h úteis; a minuta vai e volta com os ajustes até a assinatura (acompanhe em <i>Solicitações ao Jurídico → Meus pedidos</i>), e com o contrato assinado e as condições registradas pelo Jurídico você clica em <b>Solicitar implantação</b>, no próprio contrato (ou em <i>Implantação → Nova implantação → No portal</i>): ela já vem com as condições fechadas. Toda implantação começa de um contrato: contrato assinado <b>fora do portal</b> entra em <i>Nova implantação → Fora do portal</i>, com o retorno da análise, e o Jurídico registra as condições antes de seguir ao setor.',
       '<b>Solicitação de Contrato Parceria</b> (<i>Jurídico → Solicitações ao Jurídico → Novo pedido → Contrato de parceria</i>): no lugar do formulário do Forms e do e-mail, o executivo (ou o Comercial e o CS) pede o contrato com a empresa parceira: empresa, CNPJ, representante legal, responsável financeiro, e-mail da prestação de contas e as comissões (recorrência de 10% ou 5%; venda de 50% da 1ª taxa administrativa). O Jurídico tem 72h úteis para a minuta; você leva ao parceiro e pede ajuste ou a assinatura. Assinado, o setor Parceiros cadastra o parceiro e você é avisado de que já pode indicar condomínios.',
+      '<b>Painel de implantação → Em andamento</b> (menu <i>Implantação</i>, para a Gestão do Comercial): os condomínios que estão sendo implantados, pelo <b>ano</b> e pela <b>competência</b> (mês do início do contrato), com executivo, assistente, dia de vencimento, <b>1º vencimento</b> (e quanto falta), etapas, onboarding e situação. Clicar abre a implantação <b>só para leitura</b>.',
       '<b>Comissões de Novos Condomínios</b>: o condomínio fechado entra na Carteira com a <b>vigência</b> e o <b>executivo de negócios</b>. No início do mês a gestão comercial clica em <i>Puxar da carteira</i> e escolhe a vigência; cada executivo vê os condomínios dele, informa se tem parceiro (só da lista; parceiro novo é pedido ao Financeiro por ticket) e a gestão aprova. O passo a passo está no <b>Manual do Portal – Setor Administrativa/Financeira</b> (subárea Comissões de Novos Condomínios).',
     ],
     recebe: [

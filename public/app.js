@@ -3066,7 +3066,7 @@
       function lista(id, valores) { return '<datalist id="' + id + '">' + unicos(valores).map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('') + '</datalist>'; }
       var hist = (historico || []).map(function (h) {
         var det = h.detalhe || {};
-        var o = h.acao === 'condominio_criado' ? 'cadastrou o condomínio' : Object.keys(det.mudancas || {}).map(function (k) {
+        var o = h.acao === 'condominio_criado' ? 'cadastrou o condomínio' : h.acao === 'implantacao_ligada_carteira' ? 'ligou o cadastro à ' + esc(det.origem || 'implantação') : Object.keys(det.mudancas || {}).map(function (k) {
           var v = det.mudancas[k];
           if (k === 'inicio_contrato') v = [mesAno(v[0]), mesAno(v[1])];
           return '<b>' + esc(ROTULO_CAMPO[k] || k) + '</b>: ' + esc(v[0] || '(vazio)') + ' → ' + esc(v[1] || '(vazio)');
@@ -4789,7 +4789,7 @@
      Gestão (coordenação; a diretoria só consulta): abre no Dashboard. Assistente de implantação: abre no Painel de atividades,
      filtrado para ela. Comercial: Minhas solicitações. O Dashboard só tem indicadores e as pendências para acompanhar;
      as listas de trabalho ficam no Painel de atividades (Fila, Mês vigente, Controle, Pós-implantação) e em Depois da conclusão. */
-  var ABAS_PAINEL = [['dashboard', 'Dashboard', 'grafico'], ['atividades', 'Painel de atividades', 'camadas'], ['depois', 'Depois da conclusão', 'enviar'], ['minhas', 'Minhas solicitações', 'documento']];
+  var ABAS_PAINEL = [['dashboard', 'Dashboard', 'grafico'], ['atividades', 'Painel de atividades', 'camadas'], ['depois', 'Depois da conclusão', 'enviar'], ['minhas', 'Minhas solicitações', 'documento'], ['andamento', 'Em andamento', 'olho']];
   var VISOES_ATIV = [['fila', 'Fila'], ['mes', 'Mês vigente'], ['controle', 'Controle'], ['pos', 'Pós-implantação']];
   var VISOES_DEPOIS = [['carteira', 'Aguardando a Base de Clientes'], ['fichas', 'Fichas de transição'], ['antecipacoes', 'Antecipações']];
   // endereços antigos (Implantação e Acompanhamento) levam ao lugar novo
@@ -4821,14 +4821,15 @@
     var comercial = !!(p.executivo || p.admin);
     var gestao = !!(p.coordenacao || p.diretoria || p.admin);
     if (ANTIGAS_IMP[aba]) { location.replace('#/implantacao/' + ANTIGAS_IMP[aba]); return; }
-    var abas = ABAS_PAINEL.filter(function (a) { return a[0] === 'minhas' ? comercial : interno; });
+    // Em andamento: só a Gestão do Comercial e a gestão da Cobrança (só consulta); quem só acompanha vê só ela
+    var abas = ABAS_PAINEL.filter(function (a) { return a[0] === 'minhas' ? comercial : a[0] === 'andamento' ? !!p.acompanha : interno; });
     if (!abas.length) {
       $('#conteudo').innerHTML = '<div class="pagina"><h1>Painel de implantação</h1><div class="vazio">Você ainda não tem acesso à Implantação. Executivos são marcados em Configurações → Acessos → Análise de Crédito; a equipe é quem está no setor Implantação.</div></div>';
       return;
     }
     var podeParam = !!(p.coordenacao || p.admin);
     if (aba === 'parametros' && !interno) aba = '';
-    if (aba !== 'parametros' && !abas.some(function (a) { return a[0] === aba; })) aba = !interno ? 'minhas' : gestao ? 'dashboard' : 'atividades';
+    if (aba !== 'parametros' && !abas.some(function (a) { return a[0] === aba; })) aba = !interno ? (comercial ? 'minhas' : 'andamento') : gestao ? 'dashboard' : 'atividades';
     var lista = aba === 'atividades' ? VISOES_ATIV : aba === 'depois' ? VISOES_DEPOIS.filter(function (v) { return v[0] !== 'carteira' || gestao; }) : null;
     if (lista && !lista.some(function (v) { return v[0] === visao; })) visao = lembrar('painel.' + aba, lista[0][0]);
     if (lista && !lista.some(function (v) { return v[0] === visao; })) visao = lista[0][0];
@@ -4841,6 +4842,7 @@
     definirBarra('<span class="setor">Painel de implantação</span><span class="sep">/</span><span class="nome">' + esc(nomeAba + (nomeVisao ? ' · ' + nomeVisao : '')) + '</span>');
 
     if (aba === 'minhas') return minhasImp(abas, p);
+    if (aba === 'andamento') return andamentoImp(abas);
     var f = filtroAcomp, j;
     if (!$('#corpoAcomp')) $('#conteudo').innerHTML = '<div class="pagina" style="max-width:1400px"><div class="vazio">Carregando…</div></div>';
     try {
@@ -4905,6 +4907,57 @@
     }
     desenhar();
     atualizarImp();
+  }
+
+  /* ---------- Em andamento (Gestão do Comercial e da Cobrança, só consulta): as implantações em andamento pelo ano e pela
+     competência (mês do início do contrato), do 1º vencimento mais próximo. Clicar abre a implantação só para leitura. ---------- */
+  var SIT_ANDAMENTO = { juridico: ['No Jurídico (conferência do contrato)', 'cinza'], fila: ['Na fila do setor', 'cinza'], em_implantacao: ['Em implantação', 'azul'],
+    pendencia: ['Pendência com o comercial', 'ambar'] };
+  function onbAndamento(o) {
+    var d = o.data ? dataBr(o.data).slice(0, 5) + (o.hora ? ' · ' + o.hora : '') : '';
+    if (o.situacao === 'realizado') return '✓ ' + (d || 'realizado');
+    if (o.situacao === 'marcado') return d || 'marcado';
+    if (o.situacao === 'a_marcar') return 'a marcar';
+    if (o.situacao === 'sindico_myblue') return 'síndico MyBlue';
+    return '—';
+  }
+  async function andamentoImp(abas) {
+    var chave = 'andamento.filtros.' + (eu ? eu.id : 0);
+    var f = Object.assign({ ano: '', mes: '' }, lembrar(chave, {}));
+    var j;
+    try { j = await api('GET', '/api/implantacoes/andamento?ano=' + encodeURIComponent(f.ano) + '&mes=' + encodeURIComponent(f.mes)); }
+    catch (e) { $('#conteudo').innerHTML = '<div class="pagina"><h1>Painel de implantação</h1><div class="vazio">' + esc(e.message) + '</div></div>'; return; }
+    f.ano = String(j.ano);
+    var opcoes = function (lista, valor) { return lista.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(valor) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); };
+    var hoje = j.hoje, periodo = (f.mes ? MESES_LONGO[f.mes - 1].toLowerCase() + ' de ' : '') + j.ano;
+    var dias = function (d) { return Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) - Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7) - 1, +hoje.slice(8, 10))) / 864e5); };
+    $('#conteudo').innerHTML = '<div class="pagina" style="max-width:none">' +
+      '<div class="cab-acomp"><div class="tit-acomp"><h1>Painel de implantação</h1><p class="sub" style="margin:0">Os condomínios que estão sendo implantados: andamento, vencimentos e quem cuida de cada um. <b>Só consulta.</b></p></div></div>' +
+      (abas.length > 1 ? '<nav class="abas abas-acomp">' + abas.map(function (a) { return '<a href="#/implantacao/' + a[0] + '" class="' + (a[0] === 'andamento' ? 'on' : '') + '">' + (IC[a[2]] || '') + esc(a[1]) + '</a>'; }).join('') + '</nav>'
+        : '<nav class="abas abas-acomp"><a href="#/implantacao/andamento" class="on">' + IC.olho + 'Em andamento</a></nav>') +
+      '<div class="filtros-acomp"><span class="rot-ano">Ano</span>' +
+      '<select class="sel-pilula cheio" id="anAno" aria-label="Ano">' + opcoes(j.anos.map(function (a) { return [a, a]; }), f.ano) + '</select>' +
+      '<select class="sel-pilula" id="anMes" aria-label="Competência">' + opcoes([['', 'Todas as competências']].concat(MESES_LONGO.map(function (m, k) { return [k + 1, m]; })), f.mes) + '</select>' +
+      '<span class="ajuda" style="margin:0">a competência é o mês do início do contrato</span></div>' +
+      '<section class="painel"><div class="cab-painel"><h2>Condomínios em implantação</h2><span class="espaco"></span><span class="sec"><b>' + j.lista.length + '</b> em andamento</span></div>' +
+      '<div class="tabela-wrap lista-andamento"><table class="tabela-andamento"><thead><tr><th>Condomínio · executivo</th><th>Assistente</th><th>Início · venc. padrão</th><th>1º vencimento</th><th>Andamento</th><th>Onboarding</th><th>Situação</th></tr></thead><tbody>' +
+      (j.lista.map(function (l) {
+        var d = dias(l.primeiro_vencimento);
+        var quando = d < 0 ? etq(['venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias'), 'vermelha']) : d === 0 ? etq(['vence hoje', 'vermelha']) : d <= 15 ? etq(['em ' + d + (d === 1 ? ' dia' : ' dias'), 'ambar']) : '<span class="sec">em ' + d + ' dias</span>';
+        return '<tr class="clicavel" data-imp="' + l.id + '" title="Abrir a implantação (só leitura)"><td class="cond-an"><b>' + esc(l.condominio || 'Sem nome') + '</b><span class="sec">' + esc([l.uf, l.uh_total ? l.uh_total + ' unidades' : ''].filter(Boolean).join(' · ')) + '</span>' +
+          (l.executivo_nome ? '<span class="sec">' + esc(l.executivo_nome) + '</span>' : '') + '</td>' +
+          '<td data-rot="Assistente">' + (l.responsavel_nome ? esc(l.responsavel_nome) : '<span class="sec">aguardando designação</span>') + '</td>' +
+          '<td data-rot="Início">' + esc(dataBr(l.inicio).slice(3)) + '<span class="sec">' + (l.dia_vencimento ? 'vence todo dia ' + l.dia_vencimento : 'sem dia de vencimento') + '</span></td>' +
+          '<td data-rot="1º vencimento"><b>' + esc(dataBr(l.primeiro_vencimento)) + '</b>' + (l.vencimento_previsto ? ' ' + etq(['previsto', 'cinza']) : '') + '<span class="sec">' + quando + '</span></td>' +
+          '<td data-rot="Andamento">' + selosImp(l.feitas) + '<span class="sec">' + l.pct + '% concluído</span></td><td data-rot="Onboarding">' + esc(onbAndamento(l.onboarding)) + '</td>' +
+          '<td class="sit-an">' + etq(SIT_ANDAMENTO[l.etapa] || [l.etapa, 'cinza']) + '</td></tr>';
+      }).join('') || '<tr><td colspan="7" class="vazio">Nenhuma implantação em andamento em ' + periodo + '.</td></tr>') +
+      '</tbody></table></div><p class="ajuda" style="margin:0;padding:10px 16px 14px">Ordenado pelo 1º vencimento. "Previsto": o 1º vencimento ainda não foi informado e foi calculado pelo dia de vencimento e o início do contrato. ' +
+      'Etapas: documentação, Vouch, onboarding, boletos e envio (verde = feita). Clique na linha para abrir a implantação (só leitura).</p></section></div>';
+    var mudar = function () { try { localStorage.setItem('portal.' + chave, JSON.stringify(f)); } catch (e) { /* sem armazenamento */ } andamentoImp(abas); };
+    $('#anAno').onchange = function () { f.ano = this.value; mudar(); };
+    $('#anMes').onchange = function () { f.mes = this.value; mudar(); };
+    $$('#conteudo tr[data-imp]').forEach(function (tr) { tr.onclick = function () { location.hash = '#/implantacao/' + tr.getAttribute('data-imp'); }; });
   }
 
   /* ---------- Dashboard: só indicadores e as pendências para acompanhar (as listas de trabalho ficam no Painel de atividades) ---------- */
@@ -5095,7 +5148,8 @@
     var prazo = function (i) {
       var c = i.l && i.l.concluir;
       if (i.etapa === 'fila') return etq(['designar', 'cinza']) + '<span class="sec">na fila desde ' + dataBr(String(i.enviado_em || '').slice(0, 10)).slice(0, 5) + '</span>';
-      if (!i.iniciado_em) return etq([i.prazo_inicio ? prazoCr(i.prazo_inicio, i.etapa).replace('Até ', 'iniciar até ').replace('Venceu ', 'prazo para iniciar venceu ') : 'a iniciar', 'azul']);
+      if (!i.iniciado_em) return etq(!i.prazo_inicio ? ['a iniciar', 'azul'] : new Date(i.prazo_inicio) < new Date()
+        ? ['prazo para iniciar venceu ' + dataHoraCr(i.prazo_inicio), 'vermelha'] : ['iniciar até ' + dataHoraCr(i.prazo_inicio), 'azul']);
       var s = c ? prazoConcluirImp(c) : null;
       return (s ? etq(s) : '') + '<span class="sec">iniciada ' + dataBr(String(i.iniciado_em).slice(0, 10)).slice(0, 5) + '</span>';
     };
@@ -5127,7 +5181,7 @@
           '<td>' + (l.concluido_em ? dataBr(String(l.concluido_em).slice(0, 10)) : '—') + '</td><td>' + selosImp(l.feitas) + '</td>' +
           '<td>' + (coord ? '<button class="btn primary sm" data-carteira-imp="' + l.id + '">Confirmar entrada</button>' : '') + '</td></tr>';
       }).join('') || '<tr><td colspan="5"><div class="vazio" style="border:0;padding:30px">Nenhuma implantação aguardando a Base de Clientes.</div></td></tr>') + '</tbody></table></div>' +
-      '<p class="ajuda" style="margin:0;padding:8px 16px 14px">Vão para a Base de Clientes os dados do formulário e das etapas, com o nome, o telefone e o e-mail do síndico. O portal recusa ID Vouch ou CNPJ que já estão na Base de Clientes.</p></section>';
+      '<p class="ajuda" style="margin:0;padding:8px 16px 14px">Vão para a Base de Clientes os dados do formulário e das etapas, com o nome, o telefone e o e-mail do síndico. Se o condomínio já foi incluído direto na Base de Clientes (mesmo ID Vouch ou CNPJ), a janela oferece ligar a implantação a esse cadastro, sem criar outro.</p></section>';
     $$('[data-carteira-imp]', raiz).forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); confirmarCarteiraImp({ id: Number(b.getAttribute('data-carteira-imp')) }, recarregar); }; });
     irImpAcomp(raiz);
   }
@@ -5719,10 +5773,10 @@
       etq(pos.concluido ? ['etapas feitas', 'verde'] : pos.atrasadas ? [pos.atrasadas + (pos.atrasadas === 1 ? ' atrasada' : ' atrasadas'), 'vermelha'] : [pos.etapas.filter(function (x) { return x.feito && !x.acao; }).length + ' de 3 feitas', 'azul']) +
       '<span class="espaco"></span><span class="ajuda" style="margin:0">com a Assistente de Implantação · prazos em dias úteis</span></div><div class="corpo pilha" style="gap:0">';
     html += linha(1, esp, 'Verifique no Assertiva e abra a solicitação na <b>Análise de Espólio</b> com o documento; a coordenação de cobrança analisa e devolve. ' + diasUteisImp(esp.dias) + ' depois de assumir (' + dataBr(esp.inicio) + ').', extraEsp,
-      cobrar(esp) + '<a class="btn ' + (esp.acao ? 'primary' : 'ghost') + ' sm" href="#/m/analise-de-espolio">Abrir a Análise de Espólio</a>' + (marca && !esp.feito ? '<button class="btn ghost sm" id="btPosEsp">Já abri: informar o protocolo</button>' : ''));
+      cobrar(esp) + (marca ? '<a class="btn ' + (esp.acao ? 'primary' : 'ghost') + ' sm" href="#/m/analise-de-espolio">Abrir a Análise de Espólio</a>' : '') + (marca && !esp.feito ? '<button class="btn ghost sm" id="btPosEsp">Já abri: informar o protocolo</button>' : ''));
     html += linha(2, pen, 'O PDF sai da <b>Central de Ferramentas</b> (Planilha de moradores), vai pelo WhatsApp e fica salvo no CPD, na pasta do condomínio. ' + diasUteisImp(pen.dias) + ' depois de emitir os boletos' + (pen.inicio ? ' (' + dataBr(pen.inicio) + ')' : '') + '.',
       pen.registro ? esc(pen.registro.texto) + quem(pen.registro) + ' ' + desfazer('pendencias') : '',
-      cobrar(pen) + '<a class="btn ghost sm" href="#/m/credito">Abrir a Central de Ferramentas</a>' + (marca && pen.acao ? '<button class="btn primary sm" id="btPosPend">Registrar o envio</button>' : ''));
+      cobrar(pen) + (marca ? '<a class="btn ghost sm" href="#/m/credito">Abrir a Central de Ferramentas</a>' : '') + (marca && pen.acao ? '<button class="btn primary sm" id="btPosPend">Registrar o envio</button>' : ''));
     html += linha(3, pre, 'Feita no <b>Montador</b> (Central de Ferramentas), enviada ao condomínio e salva no CPD. A implantação faz só a 1ª. ' + diasUteisImp(pre.dias) + ' depois do repasse' +
       (pre.inicio ? ' (' + dataBr(pre.inicio) + ', 1º dia útil depois do vencimento de ' + dataBr(pre.vencimento) + ')' : ' (1º dia útil depois do 1º vencimento)') + '.',
       pre.registro ? 'Enviada ao condomínio' + quem(pre.registro) + ' ' + desfazer('prestacao') : '',
@@ -5927,7 +5981,8 @@
     var c = function (k, rot, extra) { return campoCr('k_' + k, rot, dd[k], extra); };
     var mo = modal({
       titulo: 'Confirmar a entrada na Base de Clientes', largo: true,
-      corpo: (j.duplicados.length ? '<div class="msg aviso" style="margin-bottom:12px">Já existe na Base de Clientes: ' + esc(j.duplicados.map(function (x) { return x.nome + ' (ID ' + x.codigo + ')'; }).join('; ')) + '. Confira antes de incluir.</div>'
+      corpo: (j.duplicados.length ? '<div class="msg aviso" style="margin-bottom:12px">Já está na Base de Clientes, com o mesmo ID Vouch ou CNPJ. Se foi incluído direto lá, ligue a implantação a esse cadastro: nada é criado de novo, e só o síndico e a assistente de crédito em branco são preenchidos.' +
+          j.duplicados.map(function (x) { return '<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><b>' + esc(x.nome) + '</b><span class="sec" style="display:inline">ID ' + esc(x.codigo) + (x.cnpj ? ' · CNPJ ' + esc(x.cnpj) : '') + '</span><span style="flex:1"></span>' + (x.ligado_a ? '<span class="sec" style="display:inline">já ligado à implantação ' + esc(x.ligado_a) + '</span>' : '<button class="btn primary" data-ligar="' + x.id + '">Ligar a este cadastro</button>') + '</div>'; }).join('') + '</div>'
         : '<div class="msg ok" style="margin-bottom:12px">Nenhum condomínio com este ID ou CNPJ na Base de Clientes.</div>') +
         '<div class="grade-3">' + c('codigo', 'ID Vouch', { ajuda: 'Da etapa Cadastro no sistema.' }) + c('nome', 'Nome na Base de Clientes', { ajuda: 'Sugerido a partir da razão social.' }) + c('situacao', 'Situação') +
         c('razao_social', 'Razão social', { span: 2 }) + c('cnpj', 'CNPJ') + c('comarca', 'UF') + c('vencimento', 'Vencimento padrão', { ajuda: 'O dia do formulário (não o 1º vencimento).' }) + c('inicio_contrato', 'Início do contrato (vigência)', { tipo: 'date' }) +
@@ -5935,7 +5990,14 @@
         '<span class="rot" style="margin-top:12px">Síndico (do formulário)</span><div class="grade-3">' + c('sindico_nome', 'Nome do síndico') + c('sindico_telefone', 'Telefone do síndico') + c('sindico_email', 'E-mail do síndico', { tipo: 'email' }) + '</div>' +
         '<label class="rot" for="k_observacoes" style="margin-top:12px">Observações</label><textarea class="campo" id="k_observacoes" rows="2">' + esc(dd.observacoes) + '</textarea>' +
         '<div class="ajuda">Analista de cobrança, extrajudicial e assistente de crédito são escolhidos depois, na ficha do condomínio na Base de Clientes.</div>',
-      pe: '<button class="btn ghost" data-fechar>Ainda não</button><button class="btn primary" id="kOk">Confirmar e incluir na Base de Clientes</button>',
+      pe: '<button class="btn ghost" data-fechar>Ainda não</button><button class="btn ' + (j.duplicados.length ? 'ghost' : 'primary') + '" id="kOk">Confirmar e incluir na Base de Clientes</button>',
+    });
+    $$('[data-ligar]', mo).forEach(function (bt) {
+      bt.onclick = async function () {
+        bt.disabled = true;
+        try { await api('POST', '/api/implantacoes/' + i.id + '/carteira', { vincular: Number(bt.getAttribute('data-ligar')) }); mo.fechar(); toast('Implantação ligada ao cadastro da Base de Clientes.', 'ok'); recarregar(); }
+        catch (e) { bt.disabled = false; toast(e.message, 'erro'); }
+      };
     });
     $('#kOk', mo).onclick = async function () {
       var dados = {};
@@ -6918,7 +6980,10 @@
     }
     var i = d.implantacao, pd = d.pode;
     var recarregar = function () { paginaImplantacaoDetalhe(id); atualizarImp(); };
-    var acoes = '<a class="btn ghost sm" href="#/implantacao">Voltar</a>' +
+    // quem só acompanha (aba Em andamento) volta para ela
+    var pm = m.perfil, soAcompanha = !!pm.acompanha && !(pm.admin || pm.equipe || pm.coordenacao || pm.diretoria || pm.executivo);
+    var voltar = soAcompanha ? '#/implantacao/andamento' : '#/implantacao';
+    var acoes = '<a class="btn ghost sm" href="' + voltar + '">Voltar</a>' +
       '<a class="btn ghost sm" href="/api/implantacoes/' + i.id + '/formulario.pdf" target="_blank" rel="noopener" title="Exportar o formulário em PDF">' + IC.documento + 'PDF</a>';
     // cancelar fica fora da barra enquanto o setor conduz (a barra tem as ações do dia a dia)
     if (pd.cancelar && ['em_implantacao', 'concluida'].indexOf(i.etapa) < 0) acoes += '<button class="btn danger sm" id="btCancImp">Cancelar</button>';
@@ -6966,7 +7031,7 @@
       d.eventos.map(function (e) {
         var x = e.detalhe || {};
         var extra = e.tipo === 'documento' || e.tipo === 'documento_removido' ? ': ' + esc(x.nome) : e.tipo === 'enviada' ? ' (' + esc(x.protocolo) + ')' : e.tipo === 'criada' && x.analise ? ' a partir da análise ' + esc(x.analise)
-          : e.tipo === 'designada' ? ' para ' + esc(x.para) : e.tipo === 'pendencia' ? ': ' + esc((x.itens || []).join('; ')) : e.tipo === 'carteira' ? ' (ID ' + esc(x.codigo) + ')'
+          : e.tipo === 'designada' ? ' para ' + esc(x.para) : e.tipo === 'pendencia' ? ': ' + esc((x.itens || []).join('; ')) : e.tipo === 'carteira' ? ' (ID ' + esc(x.codigo) + (x.vinculado ? ', cadastro que já estava lá' : '') + ')'
             : e.tipo === 'parceiros' ? (x.criado ? ': ' + esc(x.criado) : x.ja_existia ? ': já existia ' + esc(x.ja_existia) : ': parceiro sem cadastro')
               : e.tipo === 'autorizacao' ? ' ' + esc(x.para) + ' a editar (' + esc(ESCOPO_CURTO_IMP[x.escopo] || x.escopo) + (x.ate ? ' até ' + dataBr(x.ate) : '') + ')'
                 : e.tipo === 'autorizacao_pedida' ? ': "' + esc(x.motivo) + '"' : e.tipo === 'impedimento' ? ': ' + esc(x.motivo) + ' · "' + esc(x.detalhe) + '"' : e.tipo === 'retomada' ? ': "' + esc(x.resolucao) + '"'
