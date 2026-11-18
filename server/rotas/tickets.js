@@ -11,8 +11,8 @@
  * Notas internas e anexos internos: só o setor, o responsável e a administração.
  *
  * Jurídico: o tipo de demanda é a atividade da Tabela de prazos do Jurídico. Ao abrir, o portal cria a demanda nas Demandas
- * Jurídicas (protocolo JUR-AAAA-MM-DD-NN, prazo da atividade) ligada ao ticket; o Jurídico conduz pela demanda e o ticket
- * acompanha a situação, o responsável e o prazo (server/juridico/demandas.js).
+ * Jurídicas (protocolo JUR-AAAA-MM-DD-NN, prazo da atividade) ligada ao ticket; o Jurídico conduz pela demanda ou pelo ticket:
+ * a situação, o responsável e os comentários de um lado aparecem no outro; o prazo vem da demanda (server/juridico/demandas.js).
  */
 const express = require('express');
 const carteira = require('../carteira');
@@ -299,7 +299,7 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     const agora = new Date();
     const emAberto = ['novo', 'em_andamento', 'aguardando'].includes(t.status);
     const atrasado = emAberto && ((!t.primeira_resposta_em && t.prazo && new Date(t.prazo) < agora) || (t.prazo_conclusao && new Date(t.prazo_conclusao) < agora));
-    // pedido ao Jurídico: a demanda ligada (o Jurídico conduz por ela; a situação aparece aqui)
+    // pedido ao Jurídico: a demanda ligada (situação, responsável e comentários iguais aqui e no Painel do Jurídico)
     const demanda = await db.um(`SELECT d.id, d.protocolo, d.status, d.prazo::text AS prazo, d.entregue_em::text AS entregue_em, jt.nome AS tipo, ur.nome AS responsavel_nome
       FROM juridico_demandas d JOIN juridico_tipos jt ON jt.id = d.tipo_id LEFT JOIN usuarios ur ON ur.id = d.responsavel_id WHERE d.ticket_id = $1 ORDER BY d.id LIMIT 1`, [t.id]);
     res.json({ ticket: { ...t, ...info, atrasado }, eventos, anexos, pode: p, demanda_juridica: demanda || null });
@@ -316,6 +316,8 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     if (interno && !p.interno) return erro(res, 403, 'Notas internas são só da equipe do setor.');
     await db.tx(async (tx) => {
       await registrar(tx, t.id, req.usuario.id, 'comentario', msg, interno, null);
+      // pedido ao Jurídico: o comentário (não a nota interna) entra no histórico da demanda
+      if (!interno) await JD.registrarDoTicket(tx, t.id, req.usuario.id, 'comentario', { texto: msg.slice(0, 3000) });
       // 1ª resposta: primeiro retorno visível de alguém da equipe (que não seja quem abriu)
       const primeira = !interno && p.equipe && req.usuario.id !== t.solicitante_id && !t.primeira_resposta_em;
       await tx.q(`UPDATE tickets SET atualizado_em = now()${primeira ? ', primeira_resposta_em = now()' : ''} WHERE id = $1`, [t.id]);
@@ -361,6 +363,17 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
           titulo: `Ticket #${t.id} atualizado`, texto: `${u.nome} alterou ${tipo === 'status' ? 'a situação' : tipo === 'prazo' ? 'o prazo para resposta' : 'a prioridade'} do ticket #${t.id}.` });
       }
     }
+  }
+
+  /* pedido ao Jurídico tratado pelo ticket: a situação e o responsável vão também para a demanda ligada (se o ticket foi
+     transferido para outro setor, quem trata não é o Jurídico e a demanda fica como está) */
+  async function espelharNaDemanda(tx, t, u, eventos, motivo) {
+    const st = eventos.find(([tipo]) => tipo === 'status');
+    const atr = eventos.find(([tipo]) => tipo === 'atribuicao');
+    if ((!st && !atr) || eventos.some(([tipo]) => tipo === 'transferencia')) return;
+    const setor = await tx.um('SELECT nome FROM setores WHERE id = $1', [t.setor_id]);
+    if (!setor || setor.nome !== SETOR_JURIDICO) return;
+    await JD.espelharDoTicket(tx, t.id, u.id, { status: st ? st[2].para : undefined, responsavel_id: atr ? atr[2].para_id : undefined, motivo });
   }
 
   /* ===================== mudanças: status, responsável, prioridade, prazo, setor ===================== */
@@ -476,6 +489,7 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     await db.tx(async (tx) => {
       await tx.q(`UPDATE tickets SET ${sets.join(', ')}, atualizado_em = now() WHERE id = $${args.length}`, args);
       for (const [tipo, txt, det] of eventos) await registrar(tx, t.id, u.id, tipo, txt, false, det);
+      await espelharNaDemanda(tx, t, u, eventos, motivo);
     });
     for (const [tipo, , det] of eventos) {
       if (tipo === 'atribuicao' || tipo === 'transferencia' || tipo === 'status') await seg.auditar(req, 'ticket_' + tipo, null, { ticket: t.id, ...det });
@@ -502,6 +516,8 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
       const a = await tx.um(`INSERT INTO ticket_anexos (ticket_id, nome, tipo, tamanho, conteudo, interno, enviado_por)
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`, [t.id, nome, tipo, buf.length, buf, interno, req.usuario.id]);
       await registrar(tx, t.id, req.usuario.id, 'anexo', null, interno, { anexo: a.id, nome, tamanho: buf.length });
+      // pedido ao Jurídico: o histórico da demanda registra o envio (o arquivo fica no ticket)
+      if (!interno) await JD.registrarDoTicket(tx, t.id, req.usuario.id, 'anexo', { anexo: a.id, nome, tamanho: buf.length });
       await tx.q('UPDATE tickets SET atualizado_em = now() WHERE id = $1', [t.id]);
       return a.id;
     });

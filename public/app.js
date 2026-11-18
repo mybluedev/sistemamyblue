@@ -2376,7 +2376,7 @@
       (d.demanda_juridica ? '<div class="msg info" style="margin-bottom:16px"><b>Pedido ao Jurídico <a href="#/juridico/demanda/' + d.demanda_juridica.id + '">' + esc(d.demanda_juridica.protocolo || '') + '</a></b> · ' +
         esc(d.demanda_juridica.tipo) + ' · prazo de entrega <b>' + dataBr(d.demanda_juridica.prazo) + '</b> · ' + esc(STATUS_DJ[d.demanda_juridica.status] ? STATUS_DJ[d.demanda_juridica.status][0] : d.demanda_juridica.status) +
         (d.demanda_juridica.responsavel_nome ? ' · com ' + esc(d.demanda_juridica.responsavel_nome) : '') +
-        '. O Jurídico conduz pelo Painel do Jurídico; a situação aparece aqui. Converse e anexe pelo ticket.</div>' : '') +
+        '. A situação, o responsável e os comentários ficam iguais aqui e no Painel do Jurídico; os anexos ficam no ticket.</div>' : '') +
       '<div class="grade-ticket"><div class="pilha">' +
       '<div class="painel" style="padding:18px"><div class="cab-ev"><b>' + esc(t.solicitante_nome || '—') + '</b><span class="sec" style="display:inline"> abriu em ' + quando(t.criado_em) + '</span></div>' +
       '<div class="texto-livre" style="margin-top:8px">' + (t.descricao ? esc(t.descricao) : '<span class="sec">Sem descrição.</span>') + '</div>' +
@@ -8426,7 +8426,7 @@
     var j;
     try { j = await api('GET', '/api/juridico/demandas/' + id); } catch (e) { toast(e.message, 'erro'); return; }
     var d = j.demanda, pd = j.pode;
-    var resumo = (d.ticket_id ? '<div class="msg info" style="margin-bottom:12px">Pedido aberto pelo <a href="#/tickets/' + d.ticket_id + '">ticket ' + numTicket(d.ticket_id) + '</a>: a conversa e os anexos de quem pediu ficam lá, e a situação que você marcar aqui aparece no ticket.</div>' : '') +
+    var resumo = (d.ticket_id ? '<div class="msg info" style="margin-bottom:12px">Pedido aberto pelo <a href="#/tickets/' + d.ticket_id + '">ticket ' + numTicket(d.ticket_id) + '</a>: a situação, o responsável e os comentários ficam iguais aqui e no ticket; os anexos ficam no ticket.</div>' : '') +
       '<dl class="info-ticket" style="margin:0 0 16px"><dt>Situação</dt><dd>' + etqDj(d) + '</dd><dt>Atividade</dt><dd>' + esc(d.tipo) + ' <span class="sec" style="display:inline">· ' + d.horas + 'h úteis</span></dd>' +
       '<dt>Solicitada</dt><dd>' + dataBr(d.solicitada_em) + '</dd>' +
       '<dt>Prazo de entrega</dt><dd>' + dataBr(d.prazo) + '</dd>' +
@@ -8446,10 +8446,14 @@
     };
     var historico = j.eventos.map(function (e) {
       var x = e.detalhe || {};
+      // o que foi feito pelo ticket ligado (situação, responsável, comentário, anexo) aparece aqui com a origem
+      var noTicket = e.tipo !== 'criada' && x.ticket ? ' <span class="sec" style="display:inline">(pelo ticket ' + numTicket(x.ticket) + ')</span>' : '';
       var txt = e.tipo === 'criada' ? 'registrou a demanda' + (x.ticket ? ' pelo ticket ' + numTicket(x.ticket) : '') : e.tipo === 'importada' ? 'importou da planilha (linha ' + esc(x.linha) + ')'
-        : e.tipo === 'comentario' ? 'comentou: <span style="white-space:pre-wrap;font-weight:500">' + esc(x.texto) + '</span>'
-          : (e.tipo === 'status' ? 'mudou ' : 'alterou ') + Object.keys(x.para || {}).filter(function (k) { return ROTULO_CAMPO_DJ[k] && k !== 'horas' && k !== 'solicitante_nome' || (k === 'solicitante_nome' && !('solicitante_id' in x.para)); })
-            .map(function (k) { return esc(ROTULO_CAMPO_DJ[k]) + ': ' + esc(valorEv(k, x.de[k])) + ' → <b>' + esc(valorEv(k, x.para[k])) + '</b>'; }).join('; ');
+        : e.tipo === 'comentario' ? 'comentou' + noTicket + ': <span style="white-space:pre-wrap;font-weight:500">' + esc(x.texto) + '</span>'
+          : e.tipo === 'anexo' ? 'anexou <b>' + esc(x.nome || 'arquivo') + '</b> no <a href="#/tickets/' + Number(x.ticket) + '">ticket ' + numTicket(x.ticket) + '</a>'
+            : (e.tipo === 'status' ? 'mudou ' : 'alterou ') + Object.keys(x.para || {}).filter(function (k) { return ROTULO_CAMPO_DJ[k] && k !== 'horas' && k !== 'solicitante_nome' || (k === 'solicitante_nome' && !('solicitante_id' in x.para)); })
+              .map(function (k) { return esc(ROTULO_CAMPO_DJ[k]) + ': ' + esc(valorEv(k, x.de[k])) + ' → <b>' + esc(valorEv(k, x.para[k])) + '</b>'; }).join('; ') + noTicket +
+              (x.motivo ? ': <span style="white-space:pre-wrap;font-weight:500">' + esc(x.motivo) + '</span>' : '');
       return '<div><b style="color:var(--ink)">' + dataHoraCr(e.criado_em) + '</b> · ' + esc(e.usuario_nome || 'Sistema') + ' ' + txt + '</div>';
     }).join('');
     var mo = modal({ titulo: 'Demanda ' + (d.protocolo || '#' + d.numero) + ' · ' + d.tipo + ' · ' + d.cliente, largo: true,

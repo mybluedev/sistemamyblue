@@ -2,6 +2,7 @@
 const { conectar } = require('./banco');
 const { SETORES, SETORES_RENOMEADOS, MODULOS, CHAVES_DE_SISTEMA } = require('./catalogo');
 const { semearPolitica } = require('./credito/banco');
+const { alinharComTickets } = require('./juridico/demandas');
 
 /* Esquema em Postgres. Os HTMLs das ferramentas também ficam no banco (coluna conteudo),
    então o servidor não precisa de disco persistente. */
@@ -1219,6 +1220,7 @@ async function abrir(cfg) {
     await sincronizarCatalogo(t);
     await migrarCarteira(t);
     await semearPolitica(t);
+    await alinharComTickets(t); // demandas do Jurídico abertas com o ticket já resolvido pelo ticket
   });
   return db;
 }
