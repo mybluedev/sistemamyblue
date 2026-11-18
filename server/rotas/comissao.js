@@ -10,7 +10,7 @@
  * Ninguém mais: nem a supervisão de tickets, nem coordenadores de outros setores, nem os colegas.
  * Reenviar cria uma nova versão; a anterior fica guardada e sai das listas.
  *
- * Planilhas do mês: a gestão pede a planilha de cada pessoa (Crédito, metas dos setores…) a quem
+ * Planilhas do mês: a gestão pede a planilha de cada pessoa (Crédito, Implantação, metas dos setores…) a quem
  * envia — normalmente o coordenador do setor, que recebe um aviso só com a lista da equipe. Ele envia um arquivo
  * por pessoa em "Minhas Premiações"; quem pediu recebe um aviso só, quando todas foram enviadas, e importa na
  * ferramenta. Quem envia nunca vê a ferramenta, as regras ou valores.

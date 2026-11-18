@@ -598,7 +598,7 @@ module.exports = [
       await t.mostrar(f.locator('.det-exec').first(), 3400);
       await t.legenda('2º os <b>relatórios de garantia</b> da Vouch (PDF): VOP = Total Rateio, taxa adm. = Taxa de Serviço, boletos = Tarifa Bancária.', { etapa: K, ms: 300 });
       await t.enviarArquivo(f.locator('[data-drop="vouch"]'), f.locator('input[data-arquivo="vouch"]'), relatorio, { depois: 2600 });
-      await t.legenda('Os valores entram no contrato certo pelo CNPJ. Relatório de condomínio fora da planilha do mês fica fora da conta.', { etapa: K, ms: 300 });
+      await t.legenda('Os valores entram no contrato certo pelo CNPJ. Mais de uma tabela do mesmo condomínio? Anexe todas: os valores <b>somam</b> na mesma linha. Relatório de condomínio fora da planilha do mês fica fora da conta.', { etapa: K, ms: 300 });
       await t.mostrar(f.locator('.cond-exec').first(), 3400);
       await t.legenda('No rodapé, a <b>média ponderada</b> da taxa adm. (VOP × % ÷ VOP) e a faixa: Bronze, Prata, Ouro ou Safira.', { etapa: K, ms: 300 });
       await t.mostrar(f.locator('.media-pond').first(), 3400);
