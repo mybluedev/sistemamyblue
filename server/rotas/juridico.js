@@ -31,8 +31,8 @@ const JD = require('../juridico/demandas');
 
 const STATUS = { pendente: 'Pendente', em_andamento: 'Em andamento', aguardando_retorno: 'Aguardando retorno', pronto_assinatura: 'Pronto para assinatura', aguardando_assinaturas: 'Aguardando assinaturas',
   concluido: 'Concluído', contrato_perdido: 'Contrato perdido' };
-const FECHADOS = ['concluido', 'contrato_perdido'];
-const ENTREGA_AO_MUDAR = ['pronto_assinatura', 'aguardando_assinaturas', 'concluido']; // mudou para estes sem data de entrega: entregue hoje
+const FECHADOS = JD.FECHADAS;
+const ENTREGA_AO_MUDAR = JD.ENTREGA_AO_MUDAR; // mudou para estes sem data de entrega: entregue hoje
 const AVISA_EMAIL = ['aguardando_retorno', 'concluido']; // situações que pedem algo de quem pediu (ou fecham o pedido)
 const SETOR_JURIDICO = 'Jurídico';
 const PERMISSAO = 'contratos.elaborar';
@@ -629,8 +629,17 @@ function rotasJuridico({ db, seg, avisos, regras, expediente }) {
     const { d, p } = x;
     const t = texto((req.body || {}).texto, 3000);
     if (!t) return erro(res, 400, 'Escreva o comentário.');
-    await evento(db, d.id, req.usuario.id, 'comentario', { texto: t });
-    await db.q('UPDATE juridico_demandas SET atualizado_em = now() WHERE id = $1', [d.id]);
+    await db.tx(async (tx) => {
+      await evento(tx, d.id, req.usuario.id, 'comentario', { texto: t });
+      await tx.q('UPDATE juridico_demandas SET atualizado_em = now() WHERE id = $1', [d.id]);
+      // pedido aberto por ticket: o comentário entra também na conversa do ticket (é lá que quem pediu acompanha)
+      if (d.ticket_id) {
+        await tx.q('INSERT INTO ticket_eventos (ticket_id, usuario_id, tipo, texto, interno, detalhe) VALUES ($1, $2, $3, $4, FALSE, $5::jsonb)',
+          [d.ticket_id, req.usuario.id, 'comentario', t, JSON.stringify({ demanda: d.id, protocolo: d.protocolo })]);
+        const resposta = p.juridico && req.usuario.id !== d.solicitante_id;
+        await tx.q(`UPDATE tickets SET atualizado_em = now()${resposta ? ', primeira_resposta_em = COALESCE(primeira_resposta_em, now())' : ''} WHERE id = $1`, [d.ticket_id]);
+      }
+    });
     const para = p.juridico && d.solicitante_id !== req.usuario.id ? [d.solicitante_id, d.responsavel_id]
       : d.responsavel_id ? [d.responsavel_id] : await equipeJuridica(db, regras);
     await avisos.notificar(para.filter(Boolean), { tipo: 'juridico', link: link(d.id), email: true, autor_id: req.usuario.id,

@@ -188,7 +188,12 @@ Jurídico), o tipo de demanda é a atividade da Tabela de prazos. Ao abrir o tic
 **JUR-AAAA-MM-DD-NN**, o prazo da atividade e `canal = 'ticket'`, ligada ao ticket (`juridico_demandas.ticket_id`; o ticket fica
 com o mesmo prazo de conclusão). Quem pediu acompanha só pelo ticket (conversa e anexos): esses pedidos não aparecem em
 *Solicitações ao Jurídico*. O Jurídico conduz pela demanda no Painel do Jurídico, e a situação e o responsável passam para o
-ticket (em andamento, aguardando retorno → aguardando, concluído → resolvido, contrato perdido → cancelado). Regras em
+ticket (em andamento, aguardando retorno → aguardando, concluído → resolvido, contrato perdido → cancelado). O caminho de volta
+também vale: quem é do Jurídico pode tratar pelo próprio ticket, e a situação (resolvido → concluído com a entrega no dia,
+cancelado → contrato perdido, aguardando → aguardando retorno, reaberto → em andamento), o responsável e os comentários
+(não as notas internas) entram na demanda, com "(pelo ticket #N)" no histórico; o anexo fica no ticket e o histórico registra
+o envio. O comentário feito na demanda entra na conversa do ticket. Demandas que ficaram pendentes com o ticket já resolvido
+antes disso são acertadas ao subir o portal (`alinharComTickets`). Regras em
 `server/juridico/demandas.js`; testes em `test/juridico-tickets.test.js`.
 
 **Prazo e SLA (as regras da planilha).** Cada tipo de atividade tem o prazo em horas úteis; cada 8h é um dia útil

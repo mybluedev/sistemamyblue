@@ -117,3 +117,64 @@ test('ticket para outro setor continua igual (sem demanda)', async () => {
   assert.equal(r.json.demanda, null);
   assert.equal((await ctx.db.um('SELECT COUNT(*)::int AS n FROM juridico_demandas WHERE ticket_id = $1', [r.json.id])).n, 0);
 });
+
+test('o Jurídico trata pelo ticket: situação, responsável e comentário vão para a demanda (e o comentário da demanda vem para o ticket)', async () => {
+  const meta = (await exec('GET', '/api/tickets/meta')).json;
+  const rescisao = meta.juridico.tipos.find((t) => t.nome === 'Rescisão');
+  let r = await exec('POST', '/api/tickets', { setor_id: setorJ, titulo: 'Rescisão fictícia', descricao: 'Pedido de teste.', interno: true, juridico_tipo_id: rescisao.id });
+  assert.equal(r.status, 201, r.texto);
+  const tk = r.json.id;
+  const dm = (await ctx.db.um('SELECT id FROM juridico_demandas WHERE ticket_id = $1', [tk])).id;
+  // o ticket é passado para a advogada, que comenta por ele
+  r = await admin('PATCH', `/api/tickets/${tk}`, { responsavel_id: ids['adv@teste.com'] }); // a administração passa para a advogada
+  assert.equal(r.status, 200, r.texto);
+  assert.equal((await adv('POST', `/api/tickets/${tk}/comentarios`, { texto: 'Segue a minuta.' })).status, 201);
+  assert.equal((await adv('POST', `/api/tickets/${tk}/comentarios`, { texto: 'nota só da equipe', interno: true })).status, 201);
+  let d = (await adv('GET', `/api/juridico/demandas/${dm}`)).json;
+  assert.equal(d.demanda.responsavel_id, ids['adv@teste.com']);
+  assert.ok(d.eventos.some((e) => e.tipo === 'comentario' && e.detalhe.texto === 'Segue a minuta.' && e.detalhe.ticket === tk));
+  assert.ok(!d.eventos.some((e) => e.tipo === 'comentario' && e.detalhe.texto === 'nota só da equipe'));
+  // resolve pelo ticket: a demanda fica concluída, entregue hoje, com o motivo no histórico
+  r = await adv('PATCH', `/api/tickets/${tk}`, { status: 'resolvido', motivo: 'Feito conforme solicitado.' });
+  assert.equal(r.status, 200, r.texto);
+  d = (await adv('GET', `/api/juridico/demandas/${dm}`)).json;
+  assert.equal(d.demanda.status, 'concluido');
+  assert.ok(d.demanda.entregue_em);
+  const ev = d.eventos.find((e) => e.tipo === 'status');
+  assert.deepEqual([ev.detalhe.de.status, ev.detalhe.para.status, ev.detalhe.ticket, ev.detalhe.motivo], ['pendente', 'concluido', tk, 'Feito conforme solicitado.']);
+  // o banner do ticket mostra a situação da demanda
+  assert.equal((await exec('GET', `/api/tickets/${tk}`)).json.demanda_juridica.status, 'concluido');
+  // quem pediu reabre pelo ticket: a demanda volta para em andamento
+  r = await exec('PATCH', `/api/tickets/${tk}`, { status: 'em_andamento', motivo: 'Faltou uma cláusula.' });
+  assert.equal(r.status, 200, r.texto);
+  assert.equal((await adv('GET', `/api/juridico/demandas/${dm}`)).json.demanda.status, 'em_andamento');
+  // comentário feito na demanda aparece na conversa do ticket
+  assert.equal((await adv('POST', `/api/juridico/demandas/${dm}/comentario`, { texto: 'Cláusula incluída.' })).status, 201);
+  const eventos = (await exec('GET', `/api/tickets/${tk}`)).json.eventos;
+  assert.ok(eventos.some((e) => e.tipo === 'comentario' && e.texto === 'Cláusula incluída.' && e.usuario_id === ids['adv@teste.com']));
+  // e a situação marcada no Painel continua indo para o ticket, sem voltar em eco
+  r = await adv('PATCH', `/api/juridico/demandas/${dm}`, { status: 'pronto_assinatura' });
+  assert.equal(r.status, 200, r.texto);
+  assert.equal((await exec('GET', `/api/tickets/${tk}`)).json.ticket.status, 'em_andamento');
+  assert.equal((await adv('GET', `/api/juridico/demandas/${dm}`)).json.demanda.status, 'pronto_assinatura');
+});
+
+test('demanda que ficou pendente com o ticket já resolvido pelo ticket é acertada ao subir o portal', async () => {
+  const meta = (await exec('GET', '/api/tickets/meta')).json;
+  const tipo = meta.juridico.tipos.find((t) => t.nome === 'Aditivo');
+  const r = await exec('POST', '/api/tickets', { setor_id: setorJ, titulo: 'Aditivo antigo', interno: true, juridico_tipo_id: tipo.id });
+  assert.equal(r.status, 201, r.texto);
+  const tk = r.json.id;
+  // como era antes: o ticket resolvido direto, sem passar para a demanda
+  await ctx.db.q("UPDATE tickets SET status = 'resolvido', resolvido_em = now(), responsavel_id = $2 WHERE id = $1", [tk, ids['adv@teste.com']]);
+  await ctx.db.q("INSERT INTO ticket_eventos (ticket_id, usuario_id, tipo, texto, interno, detalhe) VALUES ($1, $2, 'status', 'Entregue.', FALSE, '{\"de\":\"novo\",\"para\":\"resolvido\"}'::jsonb)", [tk, ids['adv@teste.com']]);
+  const JD = require('../server/juridico/demandas');
+  assert.ok((await ctx.db.tx((t) => JD.alinharComTickets(t))) >= 1);
+  const d = await ctx.db.um('SELECT id, status, entregue_em, responsavel_id FROM juridico_demandas WHERE ticket_id = $1', [tk]);
+  assert.deepEqual([d.status, d.responsavel_id], ['concluido', ids['adv@teste.com']]);
+  assert.ok(d.entregue_em);
+  const ev = await ctx.db.um("SELECT usuario_id, detalhe FROM juridico_eventos WHERE demanda_id = $1 AND tipo = 'status'", [d.id]);
+  assert.deepEqual([ev.usuario_id, ev.detalhe.motivo, ev.detalhe.ticket], [ids['adv@teste.com'], 'Entregue.', tk]);
+  // rodar de novo não muda nada
+  assert.equal(await ctx.db.tx((t) => JD.alinharComTickets(t)), 0);
+});
