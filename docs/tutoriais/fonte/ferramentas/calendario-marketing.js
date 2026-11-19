@@ -86,6 +86,22 @@ function documentos() {
   // encerramentos: o mês passado fechado, o atual em andamento
   docs['encerramentos/' + mesId(-1)] = { status: 'Concluído', responsavel: 'Bia Torres', obs: 'Relatório de ações e gastos enviado à diretoria.' };
   docs['encerramentos/' + mesId(0)] = { status: 'Em andamento', responsavel: 'Bia Torres', obs: '' };
+
+  // orçamentos (v1.1): dois para o mesmo serviço da feira (o menor fica destacado) e os aprovados do encontro
+  const orc = [
+    ['o-som1', 'Feira de condomínios: Fortaleza', 'Som & Luz Eventos', 'Som e palco', 'Recebido', dia(-6), dia(20), 4200],
+    ['o-som2', 'Feira de condomínios: Fortaleza', 'Áudio Exemplo Ltda', 'Som e palco', 'Recebido', dia(-5), dia(25), 3800],
+    ['o-buf', 'Encontro de síndicos: Recife', 'Buffet Sabor & Cia', 'Buffet', 'Aprovado', dia(-12), dia(10), 8500],
+    ['o-brinde', 'Encontro de síndicos: Recife', 'Gráfica Express', 'Brindes', 'Solicitado', dia(-2), '', null],
+  ];
+  for (const [id, evento, fornecedor, servico, status, solicitadoEm, validade, valor] of orc) {
+    docs['orcamentos/' + id] = { evento, fornecedor, servico, status, solicitadoEm, validade, valor, responsavel: 'Bia Torres', condicoes: '', obs: '', atualizadoEm: quando(-2) };
+  }
+  // contratações: uma a pagar (líquido da NF menor que o bruto) e uma paga acima do líquido (a ferramenta avisa: pedir estorno)
+  docs['contratacoes/c-buf'] = { evento: 'Encontro de síndicos: Recife', fornecedor: 'Buffet Sabor & Cia', servico: 'Buffet', orcamento: 'o-buf', status: 'A pagar', data: dia(-5),
+    valor: 8500, modalidade: 'Pagamento total', parcelas: null, vencimento: dia(6), nf: '1234', valorBruto: 8500, valorLiquido: 8100, valorPago: 0, dataPagamento: '', responsavel: 'Bia Torres', obs: '', atualizadoEm: quando(-5) };
+  docs['contratacoes/c-work'] = { evento: 'Workshop de gestão condominial', fornecedor: 'Gráfica Express', servico: 'Material impresso', orcamento: '', status: 'Pago', data: dia(-70),
+    valor: 5400, modalidade: 'Pagamento total', parcelas: null, vencimento: '', nf: '987', valorBruto: 5400, valorLiquido: 5150, valorPago: 5400, dataPagamento: dia(-58), responsavel: 'Bia Torres', obs: '', atualizadoEm: quando(-58) };
   return docs;
 }
 
@@ -111,7 +127,7 @@ module.exports = {
     await t.pausa(800);
   },
   abertura: ['Aniversários, tempo de casa, endomarketing, eventos, fornecedores e o fechamento do mês, num calendário só.',
-    ['Aniversários e tempo de casa da equipe', 'Cadastrar uma ação de endomarketing', 'Agenda de eventos', 'Encerramento do mês', 'Fornecedores']],
+    ['Aniversários e tempo de casa da equipe', 'Cadastrar uma ação de endomarketing', 'Agenda de eventos', 'Encerramento do mês', 'Fornecedores', 'Orçamentos e contratações']],
   async gravar(t) {
     const f = quadro(t);
 
@@ -160,7 +176,16 @@ module.exports = {
     await t.legenda('Em <b>Fornecedores</b>, os contatos e quanto já foi realizado com cada um nos eventos.', { etapa: F, ms: 300 });
     await t.rolar(360);
     await t.mostrar(f.locator('#tbForn'), 3600, { dy: 0.3 });
+
+    const O = '6 · Orçamentos e contratações';
+    await t.legenda('Na aba <b>Orçamentos e contratações</b>: os orçamentos em aberto, o contratado no ano, o que falta pagar e o que já foi pago.', { etapa: O, ms: 300 });
+    await t.clicar(f.locator('.tab[data-tab="contratos"]'), { depois: 3600 });
+    await t.legenda('Em <b>Orçamentos</b>, as propostas de cada evento. A de <b>menor valor</b> do mesmo evento e serviço fica destacada; <b>Contratar</b> leva a proposta para as contratações.', { etapa: O, ms: 300 });
+    await t.mostrar(f.locator('#tbOrc'), 3600, { dy: 0.3 });
+    await t.legenda('Em <b>Contratações</b>, a nota fiscal e o pagamento. A MyBlue paga sempre o <b>valor líquido da nota fiscal</b>, nunca o bruto: se pagar a mais, a ferramenta avisa para pedir o <b>estorno</b>.', { etapa: O, ms: 300 });
+    await t.rolar(420);
+    await t.mostrar(f.locator('#tbCt'), 3800, { dy: 0.3 });
   },
   resumo: ['Aniversários e tempo de casa vêm do <b>cadastro de Pessoas</b>', '<b>Novo item</b>: datas, eventos internos e campanhas de endomarketing',
-    '<b>Agenda</b> com fornecedor e valores · <b>Encerramento do mês</b>'],
+    '<b>Agenda</b> com fornecedor e valores · <b>Encerramento do mês</b>', '<b>Orçamentos e contratações</b>: menor valor em destaque · paga-se o líquido da NF'],
 };
