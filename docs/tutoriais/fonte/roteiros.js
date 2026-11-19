@@ -924,15 +924,15 @@ module.exports = [
       await t.clicar('#btConclImp', { depois: 1000 });
       await t.clicar('#mOk', { depois: 2400 });
 
-      await cartaoJor(t, 'Coordenação da Implantação', 'Confirma na Carteira', { email: 'nina@myblue.com.br', rota: `#/implantacao/${j.implantacao}` });
-      const E = '5 · Carteira';
-      await t.legenda('A coordenação confere e clica em <b>Confirmar na Carteira</b>: o ID Vouch e a forma de envio vêm das etapas.', { etapa: E, ms: 300 });
+      await cartaoJor(t, 'Coordenação da Implantação', 'Confirma na Base de Clientes', { email: 'nina@myblue.com.br', rota: `#/implantacao/${j.implantacao}` });
+      const E = '5 · Base de Clientes';
+      await t.legenda('A coordenação confere e clica em <b>Confirmar na Base de Clientes</b>: o ID Vouch e a forma de envio vêm das etapas.', { etapa: E, ms: 300 });
       await t.clicar('#btCartImp', { depois: 1800 });
       await t.mostrar('#k_codigo', 2000);
       await t.clicar('#kOk', { depois: 2600 });
-      await t.legenda('Pronto: o condomínio está na <b>Carteira</b>, com a análise, o contrato e as condições fechadas guardados na implantação.', { etapa: E, ms: 3200 });
+      await t.legenda('Pronto: o condomínio está na <b>Base de Clientes</b>, com a análise, o contrato e as condições fechadas guardados na implantação.', { etapa: E, ms: 3200 });
     },
-    resumo: ['<b>Analista de crédito</b>: assumir · calcular · liberar', '<b>Advogada</b>: assumir · minuta · assinatura · condições fechadas', '<b>Implantação</b>: coordenação designa · assistente conduz · coordenação confirma na Carteira'],
+    resumo: ['<b>Analista de crédito</b>: assumir · calcular · liberar', '<b>Advogada</b>: assumir · minuta · assinatura · condições fechadas', '<b>Implantação</b>: coordenação designa · assistente conduz · coordenação confirma na Base de Clientes'],
   },
 
   /* ======================= Análise de Crédito ======================= */
@@ -1153,7 +1153,7 @@ module.exports = [
       cen.impFila = await implantacaoTut(base, 'Edifício Mirante do Sol');
       cen.impNina = await implantacaoTut(base, 'Residencial Vila das Palmeiras', { responsavel: 'Nina Prado' });
     },
-    abertura: ['Do pedido que chegou ao condomínio na Carteira.', ['Designar quem conduz', 'As 5 etapas, o prazo e as conferências', 'Pendência e conclusão', 'Confirmar na Carteira']],
+    abertura: ['Do pedido que chegou ao condomínio na Base de Clientes.', ['Designar quem conduz', 'As 5 etapas, o prazo e as conferências', 'Pendência e conclusão', 'Confirmar na Carteira']],
     async gravar(t, cen) {
       const A = '1 · Fila e designação';
       await t.legenda('Quando chega uma implantação, a coordenação e a equipe são avisadas. No <b>Painel de implantação → Painel de atividades → Fila</b>, primeiro o que espera designação; a assistente abre aqui, já na carteira dela.', { etapa: A, ms: 600 });
@@ -1176,7 +1176,7 @@ module.exports = [
       await t.legenda('No onboarding, a <b>data e a hora</b> são obrigatórias. Marcado, o portal envia o <b>convite do Outlook</b> (1h, com Teams) para você, o setor CS e o síndico.', { etapa: B, ms: 400 });
       await t.preencherCampo('#e_onb_data', hoje());
       await t.preencherCampo('#e_onb_hora', '10:00');
-      await t.legenda('Na emissão dos boletos, o <b>1º vencimento</b> já vem do formulário: altere só se ficou outra data. O vencimento padrão aparece ao lado e é o que vai para a Carteira.', { etapa: B, ms: 400 });
+      await t.legenda('Na emissão dos boletos, o <b>1º vencimento</b> já vem do formulário: altere só se ficou outra data. O vencimento padrão aparece ao lado e é o que vai para a Base de Clientes.', { etapa: B, ms: 400 });
       await t.clicar('#e_bol', { depois: 500 });
       await t.preencherCampo('#e_bol_venc', diaUtil(20));
       await t.clicar('input[name=e_env][value=email]', { depois: 500 });
@@ -1196,14 +1196,14 @@ module.exports = [
       await t.legenda('Os PDFs saem da <b>Central de Ferramentas</b> e ficam no CPD: aqui só se marca o envio. Lembrete na véspera e no dia; atrasada, a coordenação também é avisada e pode cobrar.', { etapa: C, ms: 400 });
       await t.mostrar('#btPosPend', 2400);
 
-      const D = '4 · Carteira';
-      await t.legenda('A coordenação confere os dados e clica em <b>Confirmar na Carteira</b>: o ID Vouch e a forma de envio vêm das etapas; o vencimento padrão e o nome, telefone e e-mail do síndico, do formulário.', { etapa: D, ms: 400 });
+      const D = '4 · Base de Clientes';
+      await t.legenda('A coordenação confere os dados e clica em <b>Confirmar na Base de Clientes</b>: o ID Vouch e a forma de envio vêm das etapas; o vencimento padrão e o nome, telefone e e-mail do síndico, do formulário.', { etapa: D, ms: 400 });
       await t.clicar('#btCartImp', { depois: 1800 });
       await t.mostrar('#k_codigo', 2400);
       await t.clicar('#kOk', { depois: 2600 });
-      await t.legenda('Pronto: o condomínio está na Carteira, e o Controle de Emissão de Boletos acompanha.', { etapa: D, ms: 3000 });
+      await t.legenda('Pronto: o condomínio está na Base de Clientes, e o Controle de Emissão de Boletos acompanha.', { etapa: D, ms: 3000 });
     },
-    resumo: ['<b>Designar</b> · 8h úteis para iniciar', 'Marque as 5 etapas · 3 dias úteis para concluir', '<b>Concluir</b> · <b>Pós-implantação</b> · <b>Confirmar na Carteira</b>'],
+    resumo: ['<b>Designar</b> · 8h úteis para iniciar', 'Marque as 5 etapas · 3 dias úteis para concluir', '<b>Concluir</b> · <b>Pós-implantação</b> · <b>Confirmar na Base de Clientes</b>'],
   },
 
   {
@@ -1441,13 +1441,13 @@ module.exports = [
       await t.clicar('#btFechConcluir', { depois: 1000 });
       await t.clicar('#mOk', { depois: 2600 });
       const P = '5 · Painel de Desempenho';
-      await t.legenda('Em <b>Painel do Jurídico → Painel de Desempenho → Contratos de garantia</b>, o mês ou o ano: solicitados, alterações, assinaturas e fechados, e a situação de agora.', { etapa: P, ms: 200 });
+      await t.legenda('Em <b>Painel do Jurídico → Painel de Desempenho → Contratos de garantia</b>, o mês ou o ano: solicitados, aguardando assinatura, em assinatura, assinados e as alterações pedidas.', { etapa: P, ms: 200 });
       await t.ir('#/juridico/painel/indicadores/contratos', 1800);
       await t.mostrar('nav.abas a[href="#/juridico/painel/indicadores"]', 1600);
-      await t.legenda('O <b>comparativo mês a mês</b>: solicitados, aguardando assinatura, em assinatura e assinados, com a diferença para o mês anterior.', { etapa: P, ms: 300 });
-      await t.mostrar('.chart-ct svg', 3400);
+      await t.legenda('No gráfico, <b>solicitados e assinados por mês</b>. Passe o mouse para ver as quatro situações do mês; clique num mês para ver os números dele.', { etapa: P, ms: 300 });
+      await t.mostrar('.grafico-acomp', 3400);
       await t.rolar(700);
-      await t.legenda('Depois, a situação de agora, os tempos médios e quem está com cada contrato. Os encerrados ficam em <b>Painel do Jurídico → Todos</b>.', { etapa: P, ms: 3200 });
+      await t.legenda('Depois, a <b>situação agora</b>, os contratos por executivo e quem está com cada um no Jurídico. Os encerrados ficam em <b>Painel do Jurídico → Todos</b>.', { etapa: P, ms: 3200 });
     },
     resumo: ['<b>Assumir</b> · 72h úteis para a minuta', '<b>Enviar minuta</b> · ajustes · <b>Enviado para assinatura</b> · <b>Assinado</b>', 'Registre as condições fechadas · <b>Concluir</b> · Painel de Desempenho'],
   },
