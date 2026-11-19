@@ -48,11 +48,12 @@ const { porSlug, rotuloPublico } = require('../../../server/tutoriais');
       await t.tut('cartao', 'Tutorial · ' + rotuloPublico(cat.publico), cat.titulo, ...(r.abertura || ['', null]));
       await t.pausa(700);
       await t.gravar();
-      await t.pausa(4600); await t.tut('cartao', '', ''); await t.pausa(500);
+      // com narração (TUTORIAL_VOZ): o título e a frase de abertura são falados; o cartão fica até a fala acabar
+      await t.narrar([cat.titulo, (r.abertura || [])[0]].filter(Boolean).join('. '), 4600); await t.tut('cartao', '', ''); await t.pausa(500);
       await r.gravar(t, cen);
       await t.semLegenda();
       // o vídeo termina no cartão de resumo (sem voltar para a tela)
-      if (r.resumo) { await t.tut('cartao', 'Resumo', cat.titulo, '', r.resumo); await t.pausa(5600); }
+      if (r.resumo) { await t.tut('cartao', 'Resumo', cat.titulo, '', r.resumo); await t.narrar('Resumo. ' + r.resumo.join('. '), 5600); }
       await t.terminar();
       console.log('ok', r.nome);
     } catch (e) {

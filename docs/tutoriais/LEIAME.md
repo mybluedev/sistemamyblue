@@ -28,6 +28,12 @@ LANG=pt_BR.UTF-8 node docs/tutoriais/fonte/gravar-tutoriais.js <pasta-de-saída>
   `fonte/gravador.js`; use as versões que o HTML pede, ex.: `xlsx@0.18.5`, `pdfjs-dist@3.11.174`).
 - A tela da gravação tem 1280 px de largura. No layout novo, as tabelas que não cabem viram cartões empilhados;
   se isso acontecer, ponha `largura: 1600` no roteiro (o vídeo continua 1920×1080).
+- **Narração (opcional):** com `TUTORIAL_VOZ=pt-BR-FranciscaNeural`, cada legenda e cada cartão são falados pela
+  voz da Azure (Speech). A legenda seguinte só aparece quando a fala termina; as ações na tela continuam durante a
+  fala. A região vem de `TUTORIAL_VOZ_REGIAO` (padrão `brazilsouth`) e a chave de `AZURE_FALA_CHAVE` (no ambiente do
+  Claude a rede já injeta a chave e a variável pode faltar). `TUTORIAL_VOZ_RITMO` ajusta a velocidade (padrão `+5%`).
+  As falas ficam em cache na pasta `tutoriais-voz` do diretório temporário: regravar não paga a mesma frase de novo.
+  Símbolos que a voz leria ao pé da letra (→, ·, 24h, nº) viram texto falado em `paraFala` (`fonte/gravador.js`).
 - Saem dois arquivos por vídeo: `<nome>.mp4` (1920×1080, legenda na faixa de baixo) e `<nome>.vtt`
   (o passo a passo, que vira a lista clicável ao lado do vídeo no portal).
 

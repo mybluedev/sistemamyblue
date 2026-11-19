@@ -9,7 +9,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const crypto = require('crypto');
+const { execSync, execFileSync, spawn } = require('child_process');
 const { chromium } = require(execSync('npm root -g').toString().trim() + '/playwright');
 
 const RAIZ = path.join(__dirname, '..', '..', '..');
@@ -52,6 +53,48 @@ ${linhas.join('\n')}
 }
 function textoVtt(legs) {
   return 'WEBVTT\n\n' + legs.map((l) => `${tempoVtt(l.ini)} --> ${tempoVtt(l.fim)}\n${l.etapa ? semTags(l.etapa) + ' — ' : ''}${semTags(l.html)}`).join('\n\n') + '\n';
+}
+
+/* ---------- narração (Azure Speech) ----------
+ * Com TUTORIAL_VOZ (ex.: pt-BR-FranciscaNeural), cada legenda e cada cartão são falados. A legenda seguinte só
+ * aparece quando a fala termina; as ações na tela continuam acontecendo durante a fala.
+ *   TUTORIAL_VOZ_REGIAO  região do recurso de fala (padrão brazilsouth)
+ *   AZURE_FALA_CHAVE     chave do recurso (onde a rede injeta a chave, como no ambiente do Claude, pode faltar)
+ *   TUTORIAL_VOZ_RITMO   velocidade da fala (padrão +5%)
+ * As falas ficam em cache (pasta tutoriais-voz no diretório temporário): regravar não paga a mesma frase de novo. */
+const VOZ = process.env.TUTORIAL_VOZ || '';
+const PASTA_VOZ = path.join(os.tmpdir(), 'tutoriais-voz');
+const xml = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/* o texto da legenda como se fala: sem marcação e sem os símbolos que a voz leria ao pé da letra */
+function paraFala(html) {
+  return semTags(String(html).replace(/<br\s*\/?>/g, '. '))
+    .replace(/\s*→\s*/g, ', ').replace(/\s+·\s+/g, ', ').replace(/…/g, '')
+    .replace(/(\d+)h úteis/g, '$1 horas úteis').replace(/(\d+)h(?=\W|$)/g, '$1 horas')
+    .replace(/\bnº\s*/g, 'número ').replace(/\bno \+/g, 'no botão mais')
+    .replace(/\s+/g, ' ').trim();
+}
+async function sintetizar(texto) {
+  const regiao = process.env.TUTORIAL_VOZ_REGIAO || 'brazilsouth';
+  const ritmo = process.env.TUTORIAL_VOZ_RITMO || '+5%';
+  const arquivo = path.join(PASTA_VOZ, crypto.createHash('sha1').update([VOZ, ritmo, texto].join('|')).digest('hex') + '.mp3');
+  if (!fs.existsSync(arquivo)) {
+    fs.mkdirSync(PASTA_VOZ, { recursive: true });
+    const ssml = `<speak version="1.0" xml:lang="pt-BR"><voice name="${VOZ}"><prosody rate="${ritmo}">${xml(texto)}</prosody></voice></speak>`;
+    // curl (e não fetch): segue o proxy e os certificados da máquina, como os outros comandos
+    const args = ['-sS', '-m', '60', '--retry', '3', '--retry-all-errors', '-o', arquivo + '.parcial', '-w', '%{http_code}', '-X', 'POST',
+      `https://${regiao}.tts.speech.microsoft.com/cognitiveservices/v1`,
+      '-H', 'Ocp-Apim-Subscription-Key: ' + (process.env.AZURE_FALA_CHAVE || 'injetada-pela-rede'), '-H', 'Content-Type: application/ssml+xml',
+      '-H', 'X-Microsoft-OutputFormat: audio-48khz-96kbitrate-mono-mp3', '-H', 'User-Agent: tutoriais-portal', '--data-binary', '@-'];
+    const status = await new Promise((ok) => {
+      const c = spawn('curl', args); let saida = '';
+      c.stdout.on('data', (d) => { saida += d; }); c.stderr.on('data', (d) => { saida += d; });
+      c.on('close', () => ok(saida.trim())); c.stdin.end(ssml);
+    });
+    if (status !== '200') { fs.rmSync(arquivo + '.parcial', { force: true }); throw new Error(`narração: a Azure respondeu ${status} para "${texto.slice(0, 40)}…"`); }
+    fs.renameSync(arquivo + '.parcial', arquivo);
+  }
+  const ms = Math.round(parseFloat(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', arquivo]).toString()) * 1000);
+  return { arquivo, ms };
 }
 
 /* ---------- portal próprio ---------- */
@@ -166,7 +209,7 @@ class Tutorial {
       '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '14', this.bruto], { stdio: ['pipe', 'inherit', 'inherit'] });
     this.fim = new Promise((r) => this.ff.on('close', r));
     this.cdp = await this.ctx.newCDPSession(this.p);
-    this.t0 = Date.now(); this.escritos = 0; this.ultimo = null; this.legendas = [];
+    this.t0 = Date.now(); this.escritos = 0; this.ultimo = null; this.legendas = []; this.falas = []; this.livreEm = 0;
     this.cdp.on('Page.screencastFrame', ({ data, sessionId }) => {
       this.cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
       this.preencher();
@@ -197,6 +240,7 @@ class Tutorial {
   }
 
   async terminar() {
+    await this.aguardarVoz();
     await espera(400); this.preencher();
     clearInterval(this.relogio);
     await this.cdp.send('Page.stopScreencast').catch(() => {});
@@ -210,8 +254,18 @@ class Tutorial {
     // 2ª passada: faixa de legenda embaixo da tela (não cobre nada do portal)
     const filtro = `pad=${LARGURA}:1080:0:0:color=0x0d2830,drawbox=x=0:y=${ALTURA_TELA}:w=${LARGURA}:h=4:color=0x199cb1:t=fill,` +
       `ass=${path.basename(ass)}:fontsdir=${FONTES}`;
+    // com narração: cada fala entra no instante em que foi dita (adelay) e todas se somam numa faixa só
+    const falas = this.falas.filter((f) => f.ini < total);
+    const audio = falas.length ? {
+      entradas: falas.flatMap((f) => ['-i', f.arquivo]),
+      filtro: falas.map((f, i) => `[${i + 1}:a]adelay=${f.ini}:all=1[f${i}]`).join(';') + ';' + falas.map((_, i) => `[f${i}]`).join('') +
+        `amix=inputs=${falas.length}:normalize=0:dropout_transition=0,apad,atrim=0:${(total / 1000).toFixed(3)}[a]`,
+    } : null;
+    const args = audio
+      ? ['-i', path.basename(this.bruto), ...audio.entradas, '-filter_complex', `[0:v]${filtro}[v];${audio.filtro}`, '-map', '[v]', '-map', '[a]', '-c:a', 'aac', '-b:a', '128k']
+      : ['-i', path.basename(this.bruto), '-vf', filtro];
     await new Promise((ok, falha) => {
-      const f = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', path.basename(this.bruto), '-vf', filtro, '-c:v', 'libx264', '-preset', 'medium', '-crf', '24',
+      const f = spawn('ffmpeg', ['-y', '-loglevel', 'error', ...args, '-c:v', 'libx264', '-preset', 'medium', '-crf', '24',
         '-tune', 'stillimage', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.basename(this.arquivo)], { cwd: path.dirname(this.arquivo), stdio: 'inherit' });
       f.on('close', (c) => (c ? falha(new Error('ffmpeg ' + c)) : ok()));
     });
@@ -299,16 +353,36 @@ class Tutorial {
 
   /* legenda: fica na faixa de baixo até a próxima; "ms" é quanto tempo esperar lendo */
   async legenda(html, { etapa, ms } = {}) {
+    // a síntese corre enquanto a fala anterior termina; a legenda nova aparece junto com a fala dela
+    const fala = VOZ ? sintetizar(paraFala(html)) : null;
+    if (fala) fala.catch(() => {});
+    await this.aguardarVoz();
+    if (fala) this.registrarFala(await fala);
     this.legendas.push({ ini: this.agora(), html, etapa: etapa || '' });
     const texto = String(html).replace(/<[^>]+>/g, '');
     await espera(ms ?? Math.min(6500, Math.max(2300, texto.length * 52)));
   }
 
-  async semLegenda() { this.legendas.push({ ini: this.agora(), html: '' }); }
+  async semLegenda() { await this.aguardarVoz(); this.legendas.push({ ini: this.agora(), html: '' }); }
+
+  /* ---------- narração ---------- */
+  registrarFala({ arquivo, ms }) { const ini = this.agora(); this.falas.push({ ini, arquivo }); this.livreEm = ini + ms + 350; }
+  /* espera a fala em curso terminar (sem narração, não espera nada) */
+  async aguardarVoz() { const falta = this.livreEm - this.agora(); if (falta > 0) await espera(falta); }
+  /* fala um texto agora (cartões); "minimo" é o tempo mínimo na tela, com ou sem narração */
+  async narrar(texto, minimo = 0) {
+    const ini = Date.now();
+    if (VOZ && texto) { await this.aguardarVoz(); this.registrarFala(await sintetizar(paraFala(texto))); }
+    await espera(Math.max(0, minimo - (Date.now() - ini)));
+    await this.aguardarVoz();
+  }
+  /* começa a falar e devolve na hora (a tela segue enquanto a fala corre; aguardarVoz espera o fim) */
+  async falar(texto) { if (VOZ && texto) { await this.aguardarVoz(); this.registrarFala(await sintetizar(paraFala(texto))); } }
 
   async cartao(chapeu, titulo, texto, itens, ms = 4200) {
+    await this.aguardarVoz();
     await this.tut('cartao', chapeu, titulo, texto || '', itens || null);
-    await espera(ms);
+    await this.narrar([titulo, texto].filter(Boolean).join('. '), ms);
     await this.tut('cartao', '', '');
     await espera(500);
   }
@@ -337,4 +411,4 @@ async function navegador() {
   return chromium.launch({ channel: 'chromium', args: ['--lang=pt-BR', '--font-render-hinting=none'] });
 }
 
-module.exports = { subirPortal, cliente, navegador, Tutorial, espera, servir: servirBibliotecas };
+module.exports = { subirPortal, cliente, navegador, Tutorial, espera, servir: servirBibliotecas, paraFala };

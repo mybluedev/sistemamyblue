@@ -283,6 +283,7 @@ async function cartaoJor(t, chapeu, titulo, { email, rota, antes } = {}) {
   await t.semLegenda();
   await t.tut('cartao', chapeu, titulo, '', null);
   const ini = Date.now();
+  await t.falar(`${chapeu.replace(/ · /g, ', ')}: ${titulo}.`); // com narração; o cartão espera a fala acabar (abaixo)
   if (antes) await antes();
   await t.pausa(Math.max(400, 3000 - (Date.now() - ini)));
   if (email) await trocarPessoa(t, email);
@@ -290,6 +291,7 @@ async function cartaoJor(t, chapeu, titulo, { email, rota, antes } = {}) {
   await t.ir(rota, 200);
   await t.p.reload();
   await t.pausa(1600);
+  await t.aguardarVoz();
   await t.tut('cartao', '', '');
   await t.pausa(400);
 }
@@ -389,7 +391,7 @@ module.exports = [
       await t.mostrar('.cartoes .cartao', 2800);
 
       const M = '3 · O menu';
-      await t.legenda('No menu ao lado ficam a <b>Central de Links</b>, os <b>Tutoriais</b>, os <b>Tickets</b> e a <b>Carteira de condomínios</b>.', { etapa: M, ms: 400 });
+      await t.legenda('No menu ao lado ficam a <b>Central de Links</b>, os <b>Tutoriais</b>, os <b>Tickets</b> e a <b>Base de Clientes</b>.', { etapa: M, ms: 400 });
       for (const h of ['#/links', '#/tutoriais', '#/tickets', '#/carteira']) await t.mostrar(menu(h), 900, { dx: 0.3 });
       await t.legenda('E, separadas por setor, as ferramentas que você usa.', { etapa: M, ms: 400 });
       await t.mostrar('#lateral a[data-slug]', 2200, { dx: 0.3 });
@@ -751,7 +753,7 @@ module.exports = [
       await cen.P.analisePronta();
       cen.pdfsImp = pdfsImp();
     },
-    abertura: ['O caminho do executivo: da análise de crédito ao condomínio na Carteira.', ['Pedir a análise e receber o retorno', 'Pedir o contrato e levar a minuta ao síndico', 'Solicitar a implantação', 'Acompanhar até a Carteira']],
+    abertura: ['O caminho do executivo: da análise de crédito ao condomínio na Base de Clientes.', ['Pedir a análise e receber o retorno', 'Pedir o contrato e levar a minuta ao síndico', 'Solicitar a implantação', 'Acompanhar até a Carteira']],
     async gravar(t, cen) {
       const P = cen.P, j = P.j;
       const A = '1 · Análise de Crédito';
@@ -824,10 +826,10 @@ module.exports = [
       await t.legenda('<b>Enviar ao setor Implantação</b>: sai o protocolo IMP, e a coordenação é avisada.', { etapa: D, ms: 300 });
       await t.clicar('#btEnviarImp', { depois: 2600 });
 
-      await cartaoJor(t, 'Enquanto isso · Implantação', 'A coordenação designa, a assistente conduz e o condomínio entra na Carteira', { rota: `#/implantacao/${j.implantacao}`,
+      await cartaoJor(t, 'Enquanto isso · Implantação', 'A coordenação designa, a assistente conduz e o condomínio entra na Base de Clientes', { rota: `#/implantacao/${j.implantacao}`,
         antes: async () => { await P.designar('Otto Reis'); await P.iniciar(P.otto); await P.etapasEConcluir(P.otto); await P.carteira(); } });
       const E = '4 · Acompanhar';
-      await t.legenda('Você é avisado em cada passo e acompanha tudo na implantação: aqui, <b>concluída</b> e com o condomínio na Carteira.', { etapa: E, ms: 300 });
+      await t.legenda('Você é avisado em cada passo e acompanha tudo na implantação: aqui, <b>concluída</b> e com o condomínio na Base de Clientes.', { etapa: E, ms: 300 });
       await t.mostrar('#conteudo .pagina .etiqueta', 3000);
       await t.legenda('O contrato e a análise ficam ligados à implantação, a um clique.', { etapa: E, ms: 3000 });
     },
@@ -1100,7 +1102,7 @@ module.exports = [
       const B = '2 · Formulário';
       await t.legenda('O formulário já vem com o contrato e a análise. As <b>condições do contrato</b> ficam travadas: valem as do contrato assinado.', { etapa: B, ms: 600 });
       await t.mostrar('#i_taxa_adm', 3000);
-      await t.legenda('Dois vencimentos: o <b>vencimento padrão</b> (dia) do condomínio, que vai para a Carteira, e o <b>1º vencimento</b> (data), que pode ser outro por causa da implantação.', { etapa: B, ms: 500 });
+      await t.legenda('Dois vencimentos: o <b>vencimento padrão</b> (dia) do condomínio, que vai para a Base de Clientes, e o <b>1º vencimento</b> (data), que pode ser outro por causa da implantação.', { etapa: B, ms: 500 });
       await t.mostrar('#i_primeiro_vencimento', 2400);
       await t.legenda('Confira o síndico: nome, <b>CPF</b> (o portal confere na hora), e-mail e telefone.', { etapa: B, ms: 400 });
       await t.mostrar('#i_sindico_cpf', 2200);
@@ -1125,7 +1127,7 @@ module.exports = [
       await t.clicar('#btEnviarImp', { depois: 2800 });
       await t.legenda('No botão <b>PDF</b> sai o formulário completo, para guardar ou enviar.', { etapa: D, ms: 400 });
       await t.mostrar('#acoesBarra a[href$="formulario.pdf"]', 2600);
-      await t.legenda('Em <b>Abrir</b> você acompanha a <b>linha do tempo</b> (enviada, designada, iniciada, concluída e na Carteira). Se o setor devolver com pendência, a lista chega no sino e por e-mail: ajuste e reenvie.', { etapa: D, ms: 3200 });
+      await t.legenda('Em <b>Abrir</b> você acompanha a <b>linha do tempo</b> (enviada, designada, iniciada, concluída e na Base de Clientes). Se o setor devolver com pendência, a lista chega no sino e por e-mail: ajuste e reenvie.', { etapa: D, ms: 3200 });
 
       const E = '5 · Contrato assinado fora do portal';
       await t.ir('#/implantacao/minhas', 1400);
@@ -1650,11 +1652,13 @@ module.exports = [
       await t.clicar(`[data-acao="aguardando"][data-origem="demanda"][data-id="${cen.dj.atrasada}"]`, { depois: 2200 });
 
       const E = '4 · Painel de Desempenho';
-      await t.legenda('No <b>Painel de Desempenho</b>, o mês ou o ano: solicitadas, concluídas, o % <b>dentro do SLA</b> e o comparativo mês a mês.', { etapa: E, ms: 300 });
+      await t.legenda('No <b>Painel de Desempenho</b>, o mês ou o ano: solicitadas, concluídas, o % <b>dentro do SLA</b>, as fora do SLA e o que está em aberto agora.', { etapa: E, ms: 300 });
       await t.clicar('nav.abas a[href="#/juridico/painel/indicadores"]', { depois: 2000 });
-      await t.mostrar('.kpis-ct', 2600);
+      await t.mostrar('.cards-acomp', 2600);
+      await t.legenda('No gráfico, solicitadas e concluídas por mês, com o % dentro do SLA embaixo de cada mês. Clique num mês para ver os números dele.', { etapa: E, ms: 300 });
+      await t.mostrar('.grafico-acomp', 2600);
       await t.rolar(900);
-      await t.legenda('Mais abaixo, a situação de agora, o % dentro do SLA por atividade e por mês, e as listas <b>por solicitante</b>, atividade, setor e estado.', { etapa: E, ms: 3400 });
+      await t.legenda('Mais abaixo, a <b>situação agora</b>, o % dentro do SLA por atividade e as listas <b>por solicitante</b>, por responsável, atividade, setor e estado.', { etapa: E, ms: 3400 });
       await t.rolar(900);
       await t.legenda('Em <b>Todos</b>, a lista completa com filtros e <b>Baixar planilha</b>. A <b>Tabela de prazos</b> fica em <b>Configurações → Jurídico</b>.', { etapa: E, ms: 3400 });
       await t.legenda('Avisos: no dia do prazo e quando ele passa, para quem é responsável; e, uma vez por semana, a quem pediu, o que está esperando por ele há 15 dias ou mais.', { etapa: E, ms: 3800 });
