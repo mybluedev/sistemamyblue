@@ -178,9 +178,30 @@ o Jurídico muda, depois, na demanda.
 | Rotas (perfil, lista, uma demanda, comentário, Tabela de prazos, indicadores, planilha, importação) e a rotina de prazos | `server/rotas/juridico.js` |
 | Leitura e conferência da planilha (títulos, Tabela de Prazos, datas, status, solicitante, o que já está no portal) e os dias úteis | `server/juridico/importacao.js` |
 | Tabelas `juridico_tipos`, `juridico_demandas` (com `canal` e `status_em`), `juridico_eventos`, `juridico_importacoes`, `juridico_lembretes` | `server/db.js` |
-| Telas | `public/app.js` (blocos Demandas Jurídicas e "Jurídico: Solicitações ao Jurídico e Painel do Jurídico") |
+| Telas | `public/app.js` (blocos Demandas Jurídicas e "Jurídico: Solicitações ao Jurídico e Painel do Jurídico"); o Painel do Jurídico também como ferramenta em HTML (`painel-juridico`, abaixo) |
 | Testes (dados fictícios) | `test/juridico.test.js` |
-| Tutoriais | `juridico-demandas-pedir` e `juridico-demandas-conduzir` (`server/tutoriais.js`, `docs/tutoriais/fonte/roteiros.js`) |
+| Tutoriais | `juridico-demandas-pedir` e `juridico-demandas-conduzir` (`server/tutoriais.js`, `docs/tutoriais/fonte/roteiros.js`); `ferramenta-painel-juridico` (`docs/tutoriais/fonte/ferramentas/painel-juridico.js`) |
+
+### Painel do Jurídico em HTML (ferramenta `painel-juridico`)
+
+A tela do Painel do Jurídico também existe como **ferramenta** do portal, para mudar a tela sem GitHub (envia-se o HTML novo
+em *Configurações → Ferramentas*; o HTML fica fora do repositório). Os dados e as regras continuam aqui: prazos, SLA,
+avisos, contratos e parcerias.
+
+- **Catálogo**: `server/catalogo.js` cria a ferramenta (setor Jurídico, isolada, sem HTML). Com o HTML enviado e aprovado e a
+  ferramenta liberada para a pessoa (*Configurações → Acessos → Ferramentas*), o item **Painel do Jurídico** do menu passa a
+  abri-la (`modPainelJ` em `public/app.js`); sem isso, continua a tela própria do portal.
+- **O que ela alcança** (isolada, pela chave): `rotaDoPainelJuridico` em `server/seguranca.js` — as rotas do Jurídico que a
+  tela usa (listas, uma demanda, registrar, editar, comentar, excluir, assinaturas, indicadores, planilha), contratos e
+  parcerias só para ler as listas, os resumos e o painel, e `POST /api/contratos/:id/em-assinatura`. Tabela de prazos,
+  importação e os passos do contrato que pedem arquivo ficam de fora: a ferramenta abre a tela do contrato no portal
+  (`__MYBLUE__.abrir('#/contratos/<id>')`, que o portal só aceita para telas do Jurídico, de contratos, de parcerias e tickets).
+- **Abas**: Minhas demandas (com **Registrar demanda**), Assinaturas, Painel de Desempenho, **Metas**, Todos, Diretoria e
+  Cadastro de parceiros. **Metas** é o Resumo SLA da planilha: % dentro do SLA por atividade e mês (`/api/juridico/indicadores`),
+  com os meses escolhidos, a meta (guardada por pessoa), o detalhe de cada número e *Copiar tabela* / *Baixar planilha*.
+- **Quem vê cada aba** é o perfil do portal (`/api/juridico/meta`, `/api/contratos/meta`, `/api/parcerias/meta`), como na tela própria;
+  com *só consulta* na ferramenta, os botões de mudar somem.
+- Testes: `test/isolamento.test.js` (rotas liberadas e fechadas).
 
 **Pedido pela Central de Tickets.** As atividades que não têm tela própria (aditivo, rescisão, análise de contrato,
 parecer…) são pedidas por ticket ao setor Jurídico: em *Novo pedido → Outra atividade jurídica* (ou direto em Tickets →
@@ -200,16 +221,19 @@ antes disso são acertadas ao subir o portal (`alinharComTickets`). Regras em
 (arredondado para cima), contado a partir do dia seguinte à solicitação, sem fins de semana e sem os `FERIADOS` do
 expediente (como o `DIATRABALHO` do Excel). SLA: entregue até o prazo = dentro; depois = fora. Os indicadores contam pela
 data da entrega, só as entregues (o Resumo SLA da planilha). **Atrasada** não é um status: é a demanda sem entrega, não
-concluída nem perdida, com o prazo vencido. Ao passar para *Aguardando assinaturas* ou *Concluído* sem data de entrega,
-a entrega fica com a data de hoje. Mudar o prazo de um tipo na Tabela de prazos recalcula só as demandas ainda não
+concluída nem perdida, com o prazo vencido. Ao passar para *Aguardando retorno*, *Pronto para assinatura*, *Aguardando
+assinaturas* ou *Concluído* sem data de entrega, a entrega fica com a data de hoje. **Aguardando retorno conta como
+entrega** (como na planilha: o Jurídico fez a parte dele e espera quem pediu); as que já estavam aguardando retorno sem
+entrega receberam, uma vez, a data em que foram para essa situação (`retornoComoEntrega` em `server/db.js`). Mudar o prazo de um tipo na Tabela de prazos recalcula só as demandas ainda não
 entregues; as entregues guardam o SLA que tiveram.
 
 **Situações** (os nomes da planilha): Pendente, Em andamento, Aguardando retorno, Pronto para assinatura, Aguardando assinaturas,
 Concluído, Contrato perdido. Fora do SLA = sem conclusão e com o prazo vencido; Dentro do SLA = concluída até o prazo. Ao passar de
 Aguardando assinaturas para Concluído, a demanda guarda o dia em que voltou assinada (`assinado_em`).
 
-**Canal** (`canal`, só no banco): `portal` para o que é pedido no portal e `planilha` para o que foi importado (a API
-ainda aceita e-mail, WhatsApp, telefone e reunião, mas a tela não pergunta).
+**Canal** (`canal`): `portal` para o que é pedido no portal, `ticket` para o que chega por ticket e `planilha` para o que foi
+importado. No Painel do Jurídico (ferramenta), **Registrar demanda** pergunta *Como chegou* (e-mail, WhatsApp, telefone,
+reunião ou portal): é por ali que entra o que antes ia para a planilha.
 
 **Minhas demandas** (aba do Painel; `vis=fazer`): numa lista só, em cima *Pendentes · sem responsável* (contratos e parcerias na
 fila e demandas em aberto sem responsável, pendentes ou sem entrega; na demanda, **Assumir** passa para quem clicou, em andamento)
@@ -232,7 +256,9 @@ pendência ou com a minuta.
 
 **Solicitação de Contrato na mesma lista.** Os contratos enviados pelo comercial aparecem na lista, nas planilhas e nos
 indicadores sem ser lançados de novo, no tipo marcado na Tabela de prazos (*Recebe a Solicitação de Contrato*), com o
-prazo deles (72h úteis), a primeira minuta enviada como entrega e a etapa traduzida para a situação (fila → Pendente,
+prazo **desse tipo** contado da data do pedido (como na planilha: Contrato (garantia) 8h úteis; a parceria entra no tipo com
+"parceria" no nome, Contrato (parcerias) 16h; sem o tipo na tabela, vale o prazo da minuta do contrato), a primeira minuta
+enviada como entrega e a etapa traduzida para a situação (fila → Pendente,
 em elaboração → Em andamento, pendência/minuta com o comercial → Aguardando retorno, para assinar/em assinatura/
 conferência → Aguardando assinaturas, assinado → Concluído, cancelada → Contrato perdido). Clicar abre o contrato.
 

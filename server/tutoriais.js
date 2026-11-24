@@ -81,6 +81,8 @@ const TUTORIAIS = [
     descricao: 'Registrar renegociações, acompanhar a perda de receita e os tickets do CS.' },
   { slug: 'ferramenta-partnerchip', grupo: 'Ferramentas', publico: { modulo: 'partnerchip-resultados' }, titulo: 'PartnerChip: Resultados',
     descricao: 'O painel de resultados dos parceiros.' },
+  { slug: 'ferramenta-painel-juridico', grupo: 'Ferramentas', publico: { modulo: 'painel-juridico' }, titulo: 'Painel do Jurídico',
+    descricao: 'Assumir e registrar demandas, conduzir a situação e a conclusão, acompanhar assinaturas e o desempenho e ver as metas (% dentro do SLA por atividade e mês).' },
   { slug: 'ferramenta-repasses', grupo: 'Ferramentas', publico: { modulo: 'repasses' }, titulo: 'Controle de Repasses',
     descricao: 'Lançar os repasses do arquivo do sistema, conferir o dia, baixar a planilha para o Financeiro e acompanhar nas visões, nos condomínios e nos alertas.' },
   { slug: 'ferramenta-gestao-credito', grupo: 'Ferramentas', publico: { modulo: 'central-de-ferramentas-gestao-credito' }, titulo: 'Central de Ferramentas: Gestão Crédito',

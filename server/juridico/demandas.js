@@ -21,7 +21,9 @@ const STATUS_TICKET = { pendente: null, em_andamento: 'em_andamento', aguardando
   aguardando_assinaturas: 'em_andamento', concluido: 'resolvido', contrato_perdido: 'cancelado' };
 
 const FECHADAS = ['concluido', 'contrato_perdido'];
-const ENTREGA_AO_MUDAR = ['pronto_assinatura', 'aguardando_assinaturas', 'concluido']; // mudou para estes sem data de entrega: entregue hoje
+// mudou para estes sem data de entrega: entregue hoje. Aguardando retorno conta como entregue (como na planilha: o Jurídico
+// já fez a parte dele e espera quem pediu), e é assim que entra no SLA e nas metas.
+const ENTREGA_AO_MUDAR = ['aguardando_retorno', 'pronto_assinatura', 'aguardando_assinaturas', 'concluido'];
 
 /* o caminho de volta: quem é do Jurídico também trata pelo ticket (resolve, assume, comenta); a demanda acompanha.
    Só muda a situação da demanda quando a do ticket diz outra coisa (Pronto para assinatura continua "em andamento" no ticket). */

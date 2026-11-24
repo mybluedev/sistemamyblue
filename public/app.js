@@ -218,6 +218,12 @@
         if (ev.origin !== 'null' || !dono) return;
         modulo = dono;
       }
+      // a ferramenta pede para abrir uma tela do portal (ex.: o Painel do Jurídico abre o contrato): só telas do Jurídico e tickets
+      if (ev.data.tipo === 'abrir') {
+        var destino = String(ev.data.extra || '');
+        if (/^#\/(contratos|parcerias|juridico|tickets)\/[A-Za-z0-9_\/-]*$/.test(destino)) location.hash = destino;
+        return;
+      }
       statusSync[modulo] = ev.data.tipo;
       if (modulo === atual) desenharStatus();
     });
@@ -277,7 +283,10 @@
         '<div class="grupo">' + esc(rot('grupo_juridico', 'Jurídico')) + '</div>' +
         '<a href="#/juridico/pedidos" class="' + (rota.indexOf('#/juridico/pedidos') === 0 ? 'on' : '') + '">' + IC.documento +
           '<span>' + esc(rot('juridico_pedidos', 'Solicitações ao Jurídico')) + '</span><i data-contador="jur-pedidos" class="contador" hidden></i></a>' +
-        (temPainelJ() ? '<a href="#/juridico/painel" class="' + (rota.indexOf('#/juridico/painel') === 0 ? 'on' : '') + '">' + IC.pasta +
+        // com a ferramenta "Painel do Jurídico" (HTML) publicada e liberada para a pessoa, o item abre a ferramenta
+        (modPainelJ() ? '<a href="#/m/' + MOD_PAINEL_J + '" data-slug="' + MOD_PAINEL_J + '" class="' + (atual === MOD_PAINEL_J && rota.indexOf('#/m/') === 0 ? 'on' : '') + '">' + IC.pasta +
+          '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i>' + (quadros[MOD_PAINEL_J] ? '<i class="aberto" title="Aberta"></i>' : '') + '</a>'
+          : temPainelJ() ? '<a href="#/juridico/painel" class="' + (rota.indexOf('#/juridico/painel') === 0 ? 'on' : '') + '">' + IC.pasta +
           '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i></a>' : '') +
         (resumoImp && resumoImp.acesso ? '<div class="grupo">' + esc(rot('grupo_implantacao', 'Implantação')) + '</div><a href="#/implantacao" class="' + (rota.indexOf('#/implantacao') === 0 ? 'on' : '') + '">' + IC.casa +
           '<span>' + esc(rot('implantacao', 'Painel de implantação')) + '</span><i data-contador="implantacao" class="contador" hidden></i></a>' : '');
@@ -290,7 +299,7 @@
         '<a href="#/premiacoes" class="' + (rota.indexOf('#/premiacoes') === 0 ? 'on' : '') + '">' + IC.documento + '<span>' + esc(rot('minhas_premiacoes', 'Minhas Premiações')) + '</span>' +
           '<i class="contador"' + (pendC ? '' : ' hidden') + ' title="Demonstrativos esperando o seu “Estou ciente” e planilhas para enviar">' + pendC + '</i></a>';
     }
-    porSetor(termo ? lista : lista.filter(function (m) { return m.slug !== MOD_COMISSAO; })).forEach(function (g) {
+    porSetor(termo ? lista : lista.filter(function (m) { return m.slug !== MOD_COMISSAO && !(m.slug === MOD_PAINEL_J && modPainelJ()); })).forEach(function (g) {
       html += '<div class="grupo">' + esc(g.setor) + '</div>';
       g.itens.forEach(function (m) {
         html += '<a href="#/m/' + esc(m.slug) + '" data-slug="' + esc(m.slug) + '" class="' + (atual === m.slug && rota.indexOf('#/m/') === 0 ? 'on ' : '') + (m.ativo ? '' : 'inativo') + '" title="' + esc(m.nome) + '">' +
@@ -8078,6 +8087,9 @@
   }
   // o Painel do Jurídico aparece para o Jurídico, a diretoria e o setor Parceiros (cadastro do parceiro)
   function temPainelJ() { return !!((resumoDj && resumoDj.ve_tudo) || (resumoCt && resumoCt.painel) || (resumoCp && resumoCp.parceiros != null)); }
+  // a ferramenta "Painel do Jurídico" (HTML, sem GitHub para mudar a tela): vale quando tem HTML aprovado e a pessoa abre
+  var MOD_PAINEL_J = 'painel-juridico';
+  function modPainelJ() { return (modulos || []).some(function (m) { return m.slug === MOD_PAINEL_J && m.ativo && m.tem_arquivo && !m.pendente; }); }
   function etqDj(d) {
     if (d.origem === 'contrato' || d.origem === 'parceria') return etqCr(d.origem === 'contrato' ? ETAPA_CT : ETAPA_CP, d.etapa) + (d.atrasada ? ' ' + etq(['fora do SLA', 'vermelha']) : '');
     return etqCr(STATUS_DJ, d.status) + (d.atrasada ? ' ' + etq(['fora do SLA', 'vermelha']) : d.vence_hoje ? ' ' + etq(['vence hoje', 'ambar']) : '');
@@ -8389,9 +8401,9 @@
     };
     $('#djTipo', raiz).onchange = mostrarPrazo;
     mostrarPrazo();
-    // entregou (vai para assinatura ou concluiu): a entrega fica com hoje, se ainda não tem data
+    // entregou (aguarda retorno, vai para assinatura ou concluiu): a entrega fica com hoje, se ainda não tem data
     if ($('#djStatus', raiz)) $('#djStatus', raiz).onchange = function () {
-      if (['pronto_assinatura', 'aguardando_assinaturas', 'concluido'].indexOf(this.value) >= 0 && !$('#djEntrega', raiz).value) $('#djEntrega', raiz).value = m.hoje;
+      if (['aguardando_retorno', 'pronto_assinatura', 'aguardando_assinaturas', 'concluido'].indexOf(this.value) >= 0 && !$('#djEntrega', raiz).value) $('#djEntrega', raiz).value = m.hoje;
     };
     if ($('#djSolic', raiz)) $('#djSolic', raiz).onchange = function () {
       var v = this.value;
@@ -8704,7 +8716,7 @@
             '<td style="text-align:center"><input type="radio" name="djCt" data-k="' + k + '"' + (t.contratos ? ' checked' : '') + (edita && t.id ? '' : ' disabled') + ' aria-label="Recebe a Solicitação de Contrato"></td></tr>';
         }).join('') + '</tbody></table></div>' +
         (edita ? '<div class="linha" style="padding:12px 16px;justify-content:space-between"><button class="btn ghost" id="djMaisTipo">' + IC.mais + 'Novo tipo</button><button class="btn primary" id="djSalvarTipos">Salvar</button></div>' : '') +
-        '<div class="ajuda" style="padding:0 16px 14px">A Solicitação de Contrato tem o prazo próprio (' + m.horas_contrato + 'h úteis para a minuta), e a primeira minuta enviada conta como a entrega.</div></div>';
+        '<div class="ajuda" style="padding:0 16px 14px">A Solicitação de Contrato entra no tipo marcado em <b>Recebe a Solicitação de Contrato</b> e a de parceria no tipo com "parceria" no nome, com o prazo deles (como na planilha); a primeira minuta enviada conta como a entrega. Aguardando retorno também conta como entrega. Na tela do contrato, o aviso de prazo da minuta continua em ' + m.horas_contrato + 'h úteis.</div></div>';
       if (!edita) return;
       $$('#corpoDj [data-c]').forEach(function (x) {
         x.onchange = function () {

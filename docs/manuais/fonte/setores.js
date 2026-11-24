@@ -315,6 +315,21 @@ const FERRAMENTAS = {
     ],
     obs: 'O quadro <b>Hoje</b>, no topo, avisa antecipações a gerar, repasses mensais do dia e regras vencendo; <b>Semana para o Financeiro</b> baixa a semana inteira. Regras de repasse e cadastro de contas são só da coordenação/supervisão. <b>Exportar anual</b> e <b>Exportar mensal</b> baixam as visões em Excel.',
   },
+  painelJuridico: {
+    video: true,
+    nome: 'Painel do Jurídico',
+    descricao: 'A tela do Jurídico, em HTML (muda sem GitHub): as demandas, os contratos de garantia e de parceria que chegam pela Solicitação de Contrato, as assinaturas, o desempenho e as metas. Os dados e as regras (prazos, SLA, avisos) continuam no portal.',
+    dados: 'Nada fica na ferramenta: ela lê e grava pelas rotas do Jurídico, de Contratos e de Parcerias, e cada pessoa vê o que o perfil dela no portal permite. O prazo de cada atividade vem da <b>Tabela de prazos</b> (Configurações → Jurídico).',
+    abas: [
+      ['Minhas demandas', 'Em cima, as pendentes sem responsável (<b>Assumir</b>); embaixo, as em andamento com você, as fora do SLA e as que vencem hoje primeiro. <b>Registrar demanda</b> lança o que chegou por e-mail, WhatsApp, telefone ou reunião, com quem pediu, a data, a situação e o responsável.'],
+      ['Assinaturas', 'Pronto para assinatura, aguardando assinaturas e assinado (no mês), de contratos e demandas. Contrato e parceria abrem a tela deles no portal para anexar a via assinada.'],
+      ['Painel de Desempenho', 'Mês ou ano: solicitadas, concluídas, % dentro do SLA, situação agora e os rankings por solicitante, responsável, atividade, setor e estado; e o painel dos contratos de garantia por etapa.'],
+      ['Metas', 'O % dentro do SLA por atividade e mês (o Resumo SLA da planilha antiga), calculado das demandas do painel pela data de conclusão. Escolha os meses e a meta; clique num número para ver as demandas; <b>Copiar tabela</b> e <b>Baixar planilha</b> levam os números.'],
+      ['Todos', 'Todas as demandas, contratos e parcerias, com os filtros de situação, atividade, setor, origem e ano, e a planilha.'],
+      ['Diretoria e Cadastro de parceiros', 'O que espera a diretoria (contratos e parcerias) e as parcerias assinadas para o setor Parceiros cadastrar; abrem a tela de cada um no portal.'],
+    ],
+    obs: '<b>Aguardando retorno</b> conta como entrega (como na planilha). O contrato de garantia e o de parceria entram no tipo da Tabela de prazos (8h e 16h úteis), com a primeira minuta como entrega.',
+  },
   gestaoCredito: {
     video: true,
     nome: 'Central de Ferramentas — Gestão Crédito',
@@ -619,11 +634,11 @@ const SETORES = [
   {
     nome: 'Jurídico', arquivo: 'juridico',
     papel: 'Contratos, cobrança judicial, notificações e pareceres.',
-    ferramentas: [],
+    ferramentas: ['painelJuridico'],
     tambem: [
       '<b>Solicitação de Contrato</b> (no <i>Painel do Jurídico</i>): quem a administração marca em <i>Quem elabora</i> recebe os pedidos do comercial, assume da fila, redige a minuta em até 72h úteis, responde aos ajustes e, com o contrato assinado, registra as <b>condições fechadas</b> (em <i>Painel do Jurídico → Assinaturas</i>); o executivo é avisado e solicita a implantação, que vem com elas. Contrato assinado fora do portal chega direto em Assinaturas, pela implantação: registradas as condições, ela segue sozinha para o setor Implantação. Os números ficam no <b>Painel do Jurídico → Indicadores</b>. O que o manual reserva à diretoria passa por ela antes da minuta.',
       '<b>Solicitação de Contrato Parceria</b> (no <i>Painel do Jurídico</i>): os pedidos de contrato com empresas parceiras chegam na mesma fila de quem elabora (protocolo CP-…, 72h úteis para a minuta). O percentual de comissão fora do padrão espera a diretoria. Com a via assinada, registre as comissões, a vigência e os contatos: o setor Parceiros é avisado para cadastrar o parceiro. Os pedidos também aparecem nas Demandas Jurídicas.',
-      '<b>Solicitações ao Jurídico</b> e <b>Painel do Jurídico</b> (menu Jurídico): tudo o que se pede ao Jurídico num lugar só. Qualquer pessoa clica em <i>Novo pedido</i> (contrato de garantia, contrato de parceria ou outra atividade, como aditivo, rescisão e parecer) e acompanha em <i>Meus pedidos</i>, com o que espera por ela marcado. O Jurídico trabalha no Painel: <i>Minhas demandas</i> (as pendentes sem responsável, com <i>Assumir</i>, e as em andamento com ele, as fora do SLA primeiro), <i>Assinaturas</i> (pronto para assinatura, aguardando assinaturas e assinado, de todas as atividades), <i>Painel de Desempenho</i> (mês e ano: solicitadas, concluídas, % dentro do SLA, por atividade, solicitante, setor e estado) e <i>Todos</i>; a Tabela de prazos fica em <i>Configurações → Jurídico</i>; o pedido sai no nome de quem está no portal, com o setor e a data de hoje, e o prazo aparece na hora, pela atividade escolhida. O prazo de cada atividade fica na <b>Tabela de prazos</b>, em horas úteis (8h = 1 dia útil); fora do SLA é automático, e uma vez por semana quem pediu recebe a lista do que está parado com ele há 15 dias ou mais.',
+      '<b>Solicitações ao Jurídico</b> e <b>Painel do Jurídico</b> (menu Jurídico): tudo o que se pede ao Jurídico num lugar só. Qualquer pessoa clica em <i>Novo pedido</i> (contrato de garantia, contrato de parceria ou outra atividade, como aditivo, rescisão e parecer) e acompanha em <i>Meus pedidos</i>, com o que espera por ela marcado. O Jurídico trabalha no Painel: <i>Minhas demandas</i> (as pendentes sem responsável, com <i>Assumir</i>, e as em andamento com ele, as fora do SLA primeiro), <i>Assinaturas</i> (pronto para assinatura, aguardando assinaturas e assinado, de todas as atividades), <i>Painel de Desempenho</i> (mês e ano: solicitadas, concluídas, % dentro do SLA, por atividade, solicitante, setor e estado), <i>Metas</i> (% dentro do SLA por atividade e mês, das demandas do painel) e <i>Todos</i>; o que chega por e-mail, WhatsApp ou telefone entra em <i>Registrar demanda</i>, e <i>Aguardando retorno</i> conta como entrega; a Tabela de prazos fica em <i>Configurações → Jurídico</i>; o pedido sai no nome de quem está no portal, com o setor e a data de hoje, e o prazo aparece na hora, pela atividade escolhida. O prazo de cada atividade fica na <b>Tabela de prazos</b>, em horas úteis (8h = 1 dia útil); fora do SLA é automático, e uma vez por semana quem pediu recebe a lista do que está parado com ele há 15 dias ou mais.',
     ],
     recebe: [
       ['Análise / minuta de contrato', 27, 'media', 'Anexe o contrato ou a proposta e destaque os pontos de atenção.'],

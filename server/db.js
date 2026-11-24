@@ -1235,8 +1235,18 @@ async function abrir(cfg) {
     await migrarCarteira(t);
     await semearPolitica(t);
     await alinharComTickets(t); // demandas do Jurídico abertas com o ticket já resolvido pelo ticket
+    await retornoComoEntrega(t);
   });
   return db;
+}
+
+/* Jurídico: "Aguardando retorno" passou a contar como entrega (como na planilha). Uma única vez, as demandas que já
+   estavam aguardando retorno sem data de entrega recebem a data em que foram para essa situação. */
+async function retornoComoEntrega(t) {
+  if (await t.um("SELECT 1 FROM auditoria WHERE acao = 'juridico_retorno_entrega' LIMIT 1")) return;
+  const r = await t.q(`UPDATE juridico_demandas SET entregue_em = GREATEST(COALESCE(status_em, solicitada_em), solicitada_em)
+    WHERE status = 'aguardando_retorno' AND entregue_em IS NULL AND solicitada_em IS NOT NULL RETURNING id`);
+  await t.q("INSERT INTO auditoria (acao, detalhe) VALUES ('juridico_retorno_entrega', $1::jsonb)", [JSON.stringify({ demandas: r.rows.map((x) => x.id) })]);
 }
 
 /* Cria setores e módulos do catálogo uma única vez (nunca sobrescreve edições do admin). */

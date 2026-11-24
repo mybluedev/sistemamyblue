@@ -66,6 +66,8 @@ async function montarCenario(base, { ferramentas = {} } = {}) {
     await a('POST', '/api/admin/modulos', { nome, slug, setor_id: S(setor), icone, descricao: '', armazenamento: 'compartilhado' });
     await a('PUT', `/api/admin/modulos/${slug}/arquivo`, fs.readFileSync(ferramentas[slug]));
   }
+  // ferramentas que já vêm no catálogo do portal (ex.: Painel do Jurídico): só recebem o HTML quando ele é informado
+  for (const slug of ['painel-juridico']) if (ferramentas[slug]) await a('PUT', `/api/admin/modulos/${slug}/arquivo`, fs.readFileSync(ferramentas[slug]));
   // a Prestação de Contas grava no banco do portal, compartilhado pela equipe
   if (ferramentas.parceiros) await a('PATCH', '/api/admin/modulos/parceiros', { armazenamento: 'compartilhado' });
 

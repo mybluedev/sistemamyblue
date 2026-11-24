@@ -226,7 +226,11 @@ Detalhes em `docs/contratos/LEIAME.md`.
 
 ## Jurídico: Solicitações ao Jurídico e Painel do Jurídico
 
-Telas próprias do portal (menu **Jurídico → Solicitações ao Jurídico** e **Painel do Jurídico**), não são ferramentas em HTML. Quem faz o quê:
+Telas próprias do portal (menu **Jurídico → Solicitações ao Jurídico** e **Painel do Jurídico**). O Painel do Jurídico também
+existe como ferramenta em HTML (`painel-juridico`, setor Jurídico, isolada): quem a administração libera em
+*Configurações → Acessos → Ferramentas* passa a abri-la pelo mesmo item do menu; o que cada pessoa vê e muda dentro dela
+continua sendo o da tabela abaixo (o perfil vem do portal, não de papéis da ferramenta). Libere para o Jurídico, a diretoria
+e o setor Parceiros. Quem faz o quê:
 
 | Quem | Como entra | Pode |
 |---|---|---|
@@ -356,6 +360,7 @@ Quem abre a ferramenta passa a ver essas datas, então ligue só onde for precis
 | Controle de Emissão de Boletos | Crédito | Painel, Comparativo, Controle, Cadastro, Distratados, Feriados, Histórico | edita ou só consulta | já respeita o "só consulta" na tela; os condomínios vêm da Carteira (conferência na janela da ferramenta, pela coordenação do Crédito) |
 | Controle de Renegociações e Tickets | CS | Dashboard, Central de dados, Nova Renegociação, Relatório mensal, Tickets | edita ou só consulta | — |
 | Prestação de Contas — Comissão de Parceiros | Parceiros | Lançamento, Prestações do mês, Parceiros, Condomínios | edita ou só consulta | alimenta o PartnerChip e as Comissões |
+| Painel do Jurídico | Jurídico | Minhas demandas, Assinaturas, Painel de Desempenho, Metas, Todos, Diretoria, Cadastro de parceiros | abre (libere ao Jurídico, à diretoria e ao setor Parceiros); só consulta esconde os botões | slug `painel-juridico`; sem papéis próprios: as abas e o que se muda vêm do perfil no portal (Jurídico, diretoria, Parceiros); os dados ficam nas rotas do Jurídico, de Contratos e de Parcerias |
 | Controle de Pedidos — Suprimentos | Suprimentos | Geral, Janelas, Mensal | edita ou só consulta | — |
 | Central de Patrocínio | Administrativa/Financeira | Novo, Recibos, Resultados | edita ou só consulta | — |
 | Gestão de Premiações | Administrativa/Financeira | Pessoas e salários, Parâmetros, Importar | edita (restrita: salários) | "líder" e "coordenador" nela são de quem recebe demonstrativo, não de acesso |
