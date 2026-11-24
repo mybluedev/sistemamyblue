@@ -186,11 +186,11 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     const busca = texto(req.query.q, 100);
     if (busca) {
       const n = Number(busca.replace(/^#/, ''));
-      where.push(`(t.titulo ILIKE ${p('%' + busca + '%')} OR t.descricao ILIKE $${args.length} OR cd.nome ILIKE $${args.length}${Number.isInteger(n) && n > 0 ? ' OR t.id = ' + p(n) : ''})`);
+      where.push(`(t.titulo ILIKE ${p('%' + busca + '%')} OR t.descricao ILIKE $${args.length} OR cd.nome ILIKE $${args.length} OR t.condominio_prospect ILIKE $${args.length}${Number.isInteger(n) && n > 0 ? ' OR t.id = ' + p(n) : ''})`);
     }
     const limite = Math.min(Number(req.query.limite) || 200, 500);
     const { rows } = await db.q(`SELECT t.id, t.titulo, t.status, t.prioridade, t.prazo, t.prazo_conclusao, t.primeira_resposta_em, t.criado_em, t.atualizado_em, t.resolvido_em,
-        t.setor_id, s.nome AS setor_nome, c.nome AS categoria_nome, t.condominio_id, cd.nome AS condominio_nome, t.demanda_interna,
+        t.setor_id, s.nome AS setor_nome, c.nome AS categoria_nome, t.condominio_id, cd.nome AS condominio_nome, t.condominio_prospect, t.demanda_interna,
         t.solicitante_id, us.nome AS solicitante_nome, t.responsavel_id, ur.nome AS responsavel_nome,
         ${ATRASADO} AS atrasado,
         (SELECT COUNT(*)::int FROM ticket_eventos e WHERE e.ticket_id = t.id AND e.tipo = 'comentario') AS comentarios
@@ -220,12 +220,16 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
       cat = await db.um('SELECT * FROM ticket_categorias WHERE id = $1 AND setor_id = $2 AND ativo', [Number(b.categoria_id), setor.id]);
       if (!cat) return erro(res, 400, 'Tipo de demanda inválido para este setor.');
     }
-    // de um condomínio da carteira ou interna (não é de condomínio)
+    // de um condomínio da carteira, de um condomínio que ainda não é cliente ou interna (não é de condomínio)
     const interna = b.interno === true;
     let cond = null;
-    if (!interna) {
+    let prospect = '';
+    if (!interna && b.nao_cliente === true) {
+      prospect = texto(b.condominio_prospect, 160);
+      if (!prospect) return erro(res, 400, 'Ainda não é cliente: informe o nome do condomínio.');
+    } else if (!interna) {
       cond = await db.um('SELECT id, nome FROM condominios WHERE id = $1', [Number(b.condominio_id) || 0]);
-      if (!cond) return erro(res, 400, 'Demanda externa: escolha o condomínio da carteira (ou marque a demanda como interna).');
+      if (!cond) return erro(res, 400, 'Demanda externa: escolha o condomínio da carteira, "Ainda não é cliente" ou marque a demanda como interna.');
     }
     const prioridade = PRIORIDADES.includes(b.prioridade) ? b.prioridade : cat ? cat.prioridade : 'media';
     const horas = cat && cat.prazo_horas ? cat.prazo_horas : PRAZO_PADRAO_HORAS[prioridade];
@@ -235,17 +239,17 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     const auto = r0 && r0.id ? r0 : null;
     let demandaJ = null;
     const id = await db.tx(async (t) => {
-      const { id: novo } = await t.um(`INSERT INTO tickets (titulo, descricao, setor_id, categoria_id, prioridade, solicitante_id, prazo, condominio_id, demanda_interna, responsavel_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-      [titulo, descricao, setor.id, cat ? cat.id : null, prioridade, req.usuario.id, prazo, cond ? cond.id : null, interna, auto ? auto.id : null]);
-      await registrar(t, novo, req.usuario.id, 'criado', null, false, { setor: setor.nome, prioridade, condominio: cond ? cond.nome : null, interna });
-      if (tipoJ) demandaJ = await criarDemandaJuridica(t, novo, tipoJ, { titulo, descricao, cond, u: req.usuario });
+      const { id: novo } = await t.um(`INSERT INTO tickets (titulo, descricao, setor_id, categoria_id, prioridade, solicitante_id, prazo, condominio_id, demanda_interna, responsavel_id, condominio_prospect)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      [titulo, descricao, setor.id, cat ? cat.id : null, prioridade, req.usuario.id, prazo, cond ? cond.id : null, interna, auto ? auto.id : null, prospect]);
+      await registrar(t, novo, req.usuario.id, 'criado', null, false, { setor: setor.nome, prioridade, condominio: cond ? cond.nome : prospect ? prospect + ' (ainda não é cliente)' : null, interna });
+      if (tipoJ) demandaJ = await criarDemandaJuridica(t, novo, tipoJ, { titulo, descricao, cond, prospect, u: req.usuario });
       if (auto) await registrar(t, novo, null, 'atribuicao', null, false, { para: auto.nome, para_id: auto.id, automatico: true });
       else if (r0) await registrar(t, novo, null, 'carteira_sem_cadastro', null, true, { carteira: r0.carteira });
       return novo;
     });
-    await seg.auditar(req, 'ticket_criado', null, { ticket: id, setor: setor.nome, titulo, condominio: cond ? cond.nome : 'interna', responsavel: auto ? auto.nome : null });
-    const sobre = cond ? ` (${cond.nome})` : ' (interna)';
+    await seg.auditar(req, 'ticket_criado', null, { ticket: id, setor: setor.nome, titulo, condominio: cond ? cond.nome : prospect ? prospect + ' (ainda não é cliente)' : 'interna', responsavel: auto ? auto.nome : null });
+    const sobre = cond ? ` (${cond.nome})` : prospect ? ` (${prospect}, ainda não é cliente)` : ' (interna)';
     if (auto) {
       await avisos.notificar([auto.id], {
         ticket_id: id, autor_id: req.usuario.id, tipo: 'atribuido', email: true,
@@ -262,13 +266,13 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
   });
 
   /* pedido ao Jurídico: a demanda nas Demandas Jurídicas, ligada ao ticket, com o prazo da atividade (o ticket fica com o mesmo prazo) */
-  async function criarDemandaJuridica(t, ticketId, tipo, { titulo, descricao, cond, u }) {
+  async function criarDemandaJuridica(t, ticketId, tipo, { titulo, descricao, cond, prospect, u }) {
     const hoje = JD.diaBrasilia();
     const prazo = JD.prazoDe(hoje, tipo.horas, expediente.ehDiaUtil);
     const setor = await t.um(`SELECT s.nome FROM setor_membros sm JOIN setores s ON s.id = sm.setor_id WHERE sm.usuario_id = $1 ORDER BY sm.lider DESC, s.ordem, s.nome LIMIT 1`, [u.id]);
     const ex = await t.um('SELECT uf FROM executivos WHERE usuario_id = $1 AND ativo', [u.id]);
     const d = await JD.inserir(t, { ticket_id: ticketId, tipo_id: tipo.id, status: 'pendente', solicitante_id: u.id, solicitante_nome: u.nome, setor: setor ? setor.nome : '',
-      uf: ex ? ex.uf || '' : '', cliente: cond ? cond.nome : titulo, condominio_id: cond ? cond.id : null, objeto: [titulo, descricao].filter(Boolean).join('\n\n').slice(0, 2000),
+      uf: ex ? ex.uf || '' : '', cliente: cond ? cond.nome : prospect || titulo, condominio_id: cond ? cond.id : null, objeto: [titulo, descricao].filter(Boolean).join('\n\n').slice(0, 2000),
       observacoes: '', responsavel_id: null, solicitada_em: hoje, horas: tipo.horas, prazo, entregue_em: null, criado_por: u.id, aviso_vence_em: null, canal: 'ticket', status_em: hoje });
     await t.q('INSERT INTO juridico_eventos (demanda_id, usuario_id, tipo, detalhe) VALUES ($1, $2, $3, $4::jsonb)',
       [d.id, u.id, 'criada', JSON.stringify({ status: 'pendente', tipo: tipo.nome, canal: 'ticket', protocolo: d.protocolo, ticket: ticketId })]);
@@ -285,7 +289,7 @@ function rotasTickets({ db, seg, cfg, avisos, expediente }) {
     if (!v) return;
     const { t, p } = v;
     const info = await db.um(`SELECT s.nome AS setor_nome, c.nome AS categoria_nome, us.nome AS solicitante_nome, us.email AS solicitante_email,
-        ur.nome AS responsavel_nome, cd.nome AS condominio_nome, cd.comarca AS condominio_comarca, cd.codigo AS condominio_codigo
+        ur.nome AS responsavel_nome, cd.nome AS condominio_nome, t.condominio_prospect, cd.comarca AS condominio_comarca, cd.codigo AS condominio_codigo
         FROM tickets t JOIN setores s ON s.id = t.setor_id LEFT JOIN ticket_categorias c ON c.id = t.categoria_id LEFT JOIN condominios cd ON cd.id = t.condominio_id
         LEFT JOIN usuarios us ON us.id = t.solicitante_id LEFT JOIN usuarios ur ON ur.id = t.responsavel_id WHERE t.id = $1`, [t.id]);
     const eventos = (await db.q(`SELECT e.id, e.tipo, e.texto, e.interno, e.detalhe, e.criado_em, e.usuario_id, u.nome AS usuario_nome, u.foto_em
