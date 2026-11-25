@@ -199,8 +199,9 @@ avisos, contratos e parcerias.
   parcerias só para ler as listas, os resumos e o painel, e `POST /api/contratos/:id/em-assinatura`. Tabela de prazos,
   importação e os passos do contrato que pedem arquivo ficam de fora: a ferramenta abre a tela do contrato no portal
   (`__MYBLUE__.abrir('#/contratos/<id>')`, que o portal só aceita para telas do Jurídico, de contratos, de parcerias e tickets).
-- **Abas**: Minhas demandas (com **Registrar demanda**), Assinaturas, Painel de Desempenho, **Metas**, Todos, Diretoria e
-  Cadastro de parceiros. **Metas** é o Resumo SLA da planilha: % dentro do SLA por atividade e mês (`/api/juridico/indicadores`),
+- **Abas** (HTML 2.x): **Demandas** (Minhas, Assinaturas e Todas; com **Registrar demanda**), **Desempenho** (Visão geral,
+  **Metas** e Contratos de garantia) e, só para quem tem o perfil, Diretoria e Cadastro de parceiros. A versão do HTML aparece
+  no alto da tela (ex.: v2.2) e o histórico fica no começo do arquivo. **Metas** é o Resumo SLA da planilha: % dentro do SLA por atividade e mês (`/api/juridico/indicadores`),
   com os meses escolhidos, a meta (guardada por pessoa), o detalhe de cada número e *Copiar tabela* / *Baixar planilha*.
 - **Quem vê cada aba** é o perfil do portal (`/api/juridico/meta`, `/api/contratos/meta`, `/api/parcerias/meta`), como na tela própria;
   com *só consulta* na ferramenta, os botões de mudar somem.

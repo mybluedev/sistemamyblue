@@ -60,14 +60,15 @@ module.exports = {
     // a ferramenta liberada para a advogada (Configurações → Acessos → Ferramentas)
     await a('PATCH', `/api/admin/usuarios/${lara}`, { modulos: [SLUG] });
   },
-  abertura: ['Tudo o que chega ao Jurídico num lugar só, com o prazo de cada atividade e as metas.', ['Minhas demandas: assumir e registrar', 'Conduzir a demanda', 'Assinaturas e Painel de Desempenho', 'Metas: % dentro do SLA por atividade e mês']],
+  abertura: ['Tudo o que chega ao Jurídico num lugar só, com o prazo de cada atividade e as metas.', ['Demandas: assumir e registrar', 'Conduzir a demanda', 'Assinaturas e Desempenho', 'Metas: % dentro do prazo por atividade e mês']],
   async gravar(t) {
     const f = quadro(t);
-    await f.locator('#tbDj tr[data-id]').first().waitFor({ timeout: 30000 });
+    await f.locator('#listasM tr[data-id]').first().waitFor({ timeout: 30000 });
 
-    const D = '1 · Minhas demandas';
-    await t.legenda('Em <b>Minhas demandas</b>, em cima, o que chegou e ninguém pegou; embaixo, o que está com você. As fora do prazo vêm primeiro.', { etapa: D, ms: 600 });
-    await t.mostrar(f.locator('#tbDj'), 3200);
+    const D = '1 · Demandas → Minhas';
+    await t.legenda('Em <b>Demandas → Minhas</b>, os cartões resumem o que é seu; em cima, o que chegou e ninguém pegou; embaixo, o que está com você.', { etapa: D, ms: 600 });
+    await t.mostrar(f.locator('#cardsM'), 2600);
+    await t.mostrar(f.locator('#listasM'), 2600);
     await t.legenda('Clique em <b>Assumir</b>: a demanda passa para você, em andamento.', { etapa: D, ms: 300 });
     await t.clicar(f.locator('[data-pegar]').first(), { depois: 1800 });
     await t.legenda('O que chegou por e-mail, WhatsApp ou telefone entra em <b>Registrar demanda</b>: o prazo sai da Tabela de prazos.', { etapa: D, ms: 300 });
@@ -81,23 +82,23 @@ module.exports = {
 
     const C = '2 · Conduzir a demanda';
     await t.legenda('Clique na demanda para mudar a situação, a conclusão e o responsável, e para comentar com quem pediu.', { etapa: C, ms: 300 });
-    await t.clicar(f.locator('#tbDj tr[data-id]:has-text("Ed. Aurora")'), { depois: 1400 });
+    await t.clicar(f.locator('#listasM tr[data-id]:has-text("Ed. Aurora")'), { depois: 1400 });
     await t.legenda('<b>Aguardando retorno</b> conta como entrega: a data de conclusão é preenchida e a demanda entra no SLA.', { etapa: C, ms: 300 });
     await t.escolher(f.locator('#fStatus'), 'Aguardando retorno', { depois: 1200 });
     await t.mostrar(f.locator('#fEntrega'), 2000);
     await t.clicar(f.locator('#fSalvar'), { depois: 1800 });
 
     const A = '3 · Assinaturas e desempenho';
-    await t.legenda('Em <b>Assinaturas</b>, contratos e demandas que precisam de assinatura, do mais antigo para o mais novo.', { etapa: A, ms: 300 });
-    await t.clicar(f.locator('#abasPJ a[href="#assinaturas"]'), { depois: 1600 });
+    await t.legenda('Em <b>Demandas → Assinaturas</b>, contratos e demandas que precisam de assinatura, do mais antigo para o mais novo.', { etapa: A, ms: 300 });
+    await t.clicar(f.locator('.sub-abas a[href="#demandas/assinaturas"]'), { depois: 1600 });
     await t.mostrar(f.locator('.ass-item').first(), 2600);
-    await t.legenda('O <b>Painel de Desempenho</b> mostra o mês ou o ano: solicitadas, concluídas e o % dentro do SLA, por atividade, solicitante, setor e estado.', { etapa: A, ms: 300 });
-    await t.clicar(f.locator('#abasPJ a[href="#indicadores"]'), { depois: 1800 });
+    await t.legenda('Em <b>Desempenho</b>, o mês ou o ano: solicitadas, concluídas e o % dentro do prazo, por atividade, solicitante, setor e estado.', { etapa: A, ms: 300 });
+    await t.clicar(f.locator('#abasPJ a[href="#desempenho"]'), { depois: 1800 });
     await t.mostrar(f.locator('.cards-acomp'), 3000);
 
     const M = '4 · Metas';
-    await t.legenda('Em <b>Metas</b>, o % dentro do SLA por atividade e mês, como o Resumo SLA da planilha, calculado das demandas do painel.', { etapa: M, ms: 300 });
-    await t.clicar(f.locator('#abasPJ a[href="#metas"]'), { depois: 1800 });
+    await t.legenda('Em <b>Desempenho → Metas</b>, o % dentro do prazo por atividade e mês, como o Resumo SLA da planilha, calculado das demandas do painel.', { etapa: M, ms: 300 });
+    await t.clicar(f.locator('.sub-abas a[href="#desempenho/metas"]'), { depois: 1800 });
     await t.mostrar(f.locator('.metas table'), 3400);
     await t.legenda('Clique num número para ver as demandas que entraram nele: as fora do prazo vêm primeiro.', { etapa: M, ms: 300 });
     await t.clicar(f.locator('.metas td.cel').first(), { depois: 2600 });
@@ -105,6 +106,6 @@ module.exports = {
     await t.legenda('<b>Copiar tabela</b> leva os números para a planilha de metas; <b>Baixar planilha</b> salva em Excel.', { etapa: M, ms: 300 });
     await t.mostrar(f.locator('#mCopiar'), 2600);
   },
-  resumo: ['<b>Minhas demandas</b>: Assumir · <b>Registrar demanda</b> (e-mail, WhatsApp, telefone)', 'Na demanda: situação, conclusão e comentário · <b>Aguardando retorno</b> conta como entrega',
-    '<b>Metas</b>: % dentro do SLA por atividade e mês, das demandas do painel'],
+  resumo: ['<b>Demandas → Minhas</b>: Assumir · <b>Registrar demanda</b> (e-mail, WhatsApp, telefone)', 'Na demanda: situação, conclusão e comentário · <b>Aguardando retorno</b> conta como entrega',
+    '<b>Desempenho → Metas</b>: % dentro do prazo por atividade e mês, das demandas do painel'],
 };
