@@ -433,6 +433,21 @@ test('demanda de condomínio vai direto para a pessoa da carteira; interna vai p
   assert.ok((await admin('GET', '/api/tickets?vis=todos&q=jardim%20azul')).json.tickets.length >= 2);
 });
 
+test('demanda externa de condomínio que ainda não é cliente: pede o nome e vai para o líder', async () => {
+  assert.equal((await solicitante('POST', '/api/tickets', { titulo: 'Proposta', setor_id: setorCobranca, nao_cliente: true, condominio_prospect: '  ' })).status, 400);
+  emails.length = 0;
+  const r = await solicitante('POST', '/api/tickets', { titulo: 'Proposta de garantia', setor_id: setorCobranca, nao_cliente: true, condominio_prospect: 'Residencial Ficticio das Palmeiras' });
+  assert.equal(r.status, 201);
+  assert.equal(r.json.responsavel, null);
+  assert.ok(emails.some((x) => x.para.email === 'lider@teste.com'));
+  const t = (await admin('GET', `/api/tickets/${r.json.id}`)).json.ticket;
+  assert.equal(t.condominio_id, null);
+  assert.equal(t.demanda_interna, false);
+  assert.equal(t.condominio_prospect, 'Residencial Ficticio das Palmeiras');
+  const lista = (await admin('GET', '/api/tickets?vis=todos&q=palmeiras')).json.tickets;
+  assert.ok(lista.some((x) => x.id === r.json.id && x.condominio_prospect === 'Residencial Ficticio das Palmeiras'));
+});
+
 test('mudar a prioridade recalcula o prazo para resposta', async () => {
   const r = await solicitante('POST', '/api/tickets', { interno: true, titulo: 'Prioridade muda', setor_id: setorCobranca, prioridade: 'media' });
   const id = r.json.id;

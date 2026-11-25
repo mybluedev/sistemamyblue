@@ -992,6 +992,8 @@ ALTER TABLE armazenamento ADD COLUMN IF NOT EXISTS versao BIGINT NOT NULL DEFAUL
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS editor_links BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS condominio_id INTEGER REFERENCES condominios(id) ON DELETE SET NULL;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS demanda_interna BOOLEAN NOT NULL DEFAULT FALSE;
+-- demanda externa de condomínio que ainda não é cliente (fora da carteira): o nome digitado por quem abriu
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS condominio_prospect TEXT NOT NULL DEFAULT '';
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS prazo_conclusao TIMESTAMPTZ;
 -- modelo do tipo de demanda: texto que já vem na descrição ao abrir o ticket (o que a demanda precisa trazer)
 ALTER TABLE ticket_categorias ADD COLUMN IF NOT EXISTS modelo TEXT NOT NULL DEFAULT '';

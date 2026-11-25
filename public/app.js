@@ -2161,6 +2161,9 @@
       return { id: c.id, resp: c.resp || {}, rotulo: c.nome + (c.comarca ? ' · ' + c.comarca : '') + (c.distratado ? ' · distratado' : '') };
     });
     var porRotulo = {};
+    // condomínio fora da carteira (proposta, prospecção): a demanda é externa, sem condomínio da carteira
+    var NAO_CLIENTE = 'Ainda não é cliente';
+    conds = conds.filter(function (c) { return normal(c.rotulo) !== normal(NAO_CLIENTE); });
     conds.forEach(function (c) { if (porRotulo[normal(c.rotulo)]) c.rotulo += ' · nº ' + c.id; porRotulo[normal(c.rotulo)] = c; });
     var m = modal({
       titulo: 'Novo ticket', largo: true,
@@ -2172,7 +2175,8 @@
         '<label class="opcao-radio" style="margin:0"><input type="radio" name="tOrigem" value="condominio"><div><b>Externo</b><span>Condomínio, síndico, propostas</span></div></label>' +
         '<label class="opcao-radio" style="margin:0"><input type="radio" name="tOrigem" value="interna"><div><b>Interna</b><span>Demandas entre setores</span></div></label></div></div>' +
         '<div id="tCondBloco" hidden><label class="rot" for="tCond">Condomínio</label><input class="campo" id="tCond" list="tCondLista" autocomplete="off" placeholder="Digite o nome do condomínio">' +
-        '<datalist id="tCondLista">' + conds.map(function (c) { return '<option value="' + esc(c.rotulo) + '"></option>'; }).join('') + '</datalist></div>' +
+        '<datalist id="tCondLista"><option value="' + NAO_CLIENTE + '"></option>' + conds.map(function (c) { return '<option value="' + esc(c.rotulo) + '"></option>'; }).join('') + '</datalist>' +
+        '<div id="tProspBloco" hidden style="margin-top:10px"><label class="rot" for="tProsp">Nome do condomínio (ainda não é cliente)</label><input class="campo" id="tProsp" maxlength="160" autocomplete="off" placeholder="Ex.: Condomínio Residencial das Flores"></div></div>' +
         '<div class="ajuda" id="tDestino" hidden></div>' +
         '<div><label class="rot" for="tTitulo">Assunto</label><input class="campo" id="tTitulo" maxlength="160" placeholder="Resumo da demanda em uma linha"></div>' +
         '<div><label class="rot" for="tDesc">Descrição</label><textarea class="campo" id="tDesc" rows="6" maxlength="10000" placeholder="O que precisa ser feito, unidade, valores, datas… Quanto mais detalhe, mais rápido o atendimento."></textarea>' +
@@ -2202,23 +2206,26 @@
     }
     function origem() { var r = $('input[name=tOrigem]:checked', m); return r ? r.value : ''; }
     function condominio() { return porRotulo[normal($('#tCond', m).value.trim())] || null; }
+    function naoCliente() { return origem() === 'condominio' && normal($('#tCond', m).value.trim()) === normal(NAO_CLIENTE); }
     // para onde o ticket vai: pessoa da carteira ou líder do setor
     function destino() {
       var s = setor(), o = origem(), el = $('#tDestino', m), c = condominio();
       $('#tCondBloco', m).hidden = o !== 'condominio';
+      $('#tProspBloco', m).hidden = !naoCliente();
       el.hidden = !o || !s;
       if (el.hidden) return;
       if (o === 'interna') { el.innerHTML = 'Demanda interna: vai para o líder de <b>' + esc(s.nome) + '</b>, que distribui.'; return; }
+      if (naoCliente()) { el.innerHTML = 'Condomínio que ainda não é cliente: vai para o líder de <b>' + esc(s.nome) + '</b>, que distribui.'; return; }
       if (!conds.length) { el.innerHTML = '<span style="color:var(--red)">A carteira de condomínios ainda está vazia. Use "Interna" ou peça à administração para importar a carteira.</span>'; return; }
-      if (!$('#tCond', m).value.trim()) { el.textContent = 'Escolha o condomínio da lista.'; return; }
-      if (!c) { el.innerHTML = '<span style="color:var(--red)">Condomínio não encontrado na carteira. Escolha um nome da lista.</span>'; return; }
+      if (!$('#tCond', m).value.trim()) { el.textContent = 'Escolha o condomínio da lista (ou "' + NAO_CLIENTE + '").'; return; }
+      if (!c) { el.innerHTML = '<span style="color:var(--red)">Condomínio não encontrado na carteira. Escolha um nome da lista ou "' + NAO_CLIENTE + '".</span>'; return; }
       var r = c.resp[s.id];
       el.innerHTML = r ? 'Vai direto para <b>' + esc(r) + '</b>, responsável por este condomínio em ' + esc(s.nome) + '.' :
         r === null ? 'O responsável deste condomínio na carteira ainda não está na equipe de ' + esc(s.nome) + ' no portal: vai para o líder do setor.' :
         'Vai para o líder de <b>' + esc(s.nome) + '</b>, que distribui.';
     }
     $$('input[name=tOrigem]', m).forEach(function (r) { r.onchange = function () { destino(); if (origem() === 'condominio') $('#tCond', m).focus(); }; });
-    $('#tCond', m).oninput = destino;
+    $('#tCond', m).oninput = function () { var antes = $('#tProspBloco', m).hidden; destino(); if (antes && naoCliente()) $('#tProsp', m).focus(); };
     $('#tSetor', m).onchange = function () {
       destino();
       var s = setor();
@@ -2258,8 +2265,10 @@
       var msg = $('#tMsg', m);
       if (!$('#tSetor', m).value) { msg.textContent = 'Escolha o setor que vai atender.'; msg.hidden = false; return; }
       if (!origem()) { msg.textContent = 'Diga se a demanda é externa ou interna.'; msg.hidden = false; return; }
-      var cond = origem() === 'condominio' ? condominio() : null;
-      if (origem() === 'condominio' && !cond) { msg.textContent = 'Escolha o condomínio da lista.'; msg.hidden = false; return; }
+      var semCarteira = naoCliente();
+      var cond = origem() === 'condominio' && !semCarteira ? condominio() : null;
+      if (origem() === 'condominio' && !semCarteira && !cond) { msg.textContent = 'Escolha o condomínio da lista (ou "' + NAO_CLIENTE + '").'; msg.hidden = false; return; }
+      if (semCarteira && !$('#tProsp', m).value.trim()) { msg.textContent = 'Informe o nome do condomínio que ainda não é cliente.'; msg.hidden = false; $('#tProsp', m).focus(); return; }
       if (!$('#tTitulo', m).value.trim()) { msg.textContent = 'Informe o assunto.'; msg.hidden = false; return; }
       if (ehJuridico() && !tipoJur()) { msg.textContent = 'Escolha a atividade jurídica.'; msg.hidden = false; return; }
       bt.disabled = true;
@@ -2268,7 +2277,8 @@
           setor_id: Number($('#tSetor', m).value), categoria_id: !ehJuridico() && $('#tCat', m).value ? Number($('#tCat', m).value) : null,
           juridico_tipo_id: ehJuridico() && tipoJur() ? tipoJur().id : null,
           prioridade: $('#tPrio', m).value, titulo: $('#tTitulo', m).value, descricao: $('#tDesc', m).value,
-          interno: !cond, condominio_id: cond ? cond.id : null,
+          interno: origem() === 'interna', condominio_id: cond ? cond.id : null,
+          nao_cliente: semCarteira, condominio_prospect: semCarteira ? $('#tProsp', m).value.trim() : '',
         });
         var arqs = Array.prototype.slice.call($('#tArq', m).files);
         if (arqs.length) await enviarAnexos(r.id, arqs, false);
@@ -2329,7 +2339,7 @@
       $('#tbT').innerHTML = r.tickets.map(function (t) {
         var pessoa = visao === 'minha' ? esc(t.solicitante_nome || '—') : t.responsavel_nome ? esc(t.responsavel_nome) : '<span class="etiqueta ambar">sem responsável</span>';
         return '<tr class="clicavel" data-id="' + t.id + '"><td class="num" style="text-align:left;white-space:nowrap"><b>' + numTicket(t.id) + '</b></td>' +
-          '<td><b>' + esc(t.titulo) + '</b><span class="sec">' + (t.condominio_nome ? esc(t.condominio_nome) + ' · ' : t.demanda_interna ? 'Interna · ' : '') + (t.categoria_nome ? esc(t.categoria_nome) + ' · ' : '') + 'aberto por ' + esc(t.solicitante_nome || '—') + ' em ' + quando(t.criado_em) +
+          '<td><b>' + esc(t.titulo) + '</b><span class="sec">' + (t.condominio_nome ? esc(t.condominio_nome) + ' · ' : t.condominio_prospect ? esc(t.condominio_prospect) + ' (ainda não é cliente) · ' : t.demanda_interna ? 'Interna · ' : '') + (t.categoria_nome ? esc(t.categoria_nome) + ' · ' : '') + 'aberto por ' + esc(t.solicitante_nome || '—') + ' em ' + quando(t.criado_em) +
           (t.comentarios ? ' · ' + t.comentarios + ' comentário' + (t.comentarios === 1 ? '' : 's') : '') + '</span></td>' +
           '<td>' + esc(t.setor_nome) + '</td><td>' + etqPrio(t.prioridade) + '</td><td>' + etqStatus(t.status) + '</td><td>' + pessoa + '</td><td style="white-space:nowrap">' + prazoTxt(t) + '</td></tr>';
       }).join('') || '<tr><td colspan="7"><div class="vazio" style="border:0;padding:34px">' +
@@ -2446,7 +2456,7 @@
       (!pode.equipe && pode.cancelar ? '<button class="btn danger" id="btCancelarT">Cancelar meu pedido</button>' : '') +
       (pode.reabrir ? '<button class="btn ghost" id="btReabrir">Reabrir ticket</button>' : '') +
       '<dl class="info-ticket"><dt>Setor</dt><dd>' + esc(t.setor_nome) + '</dd><dt>Tipo</dt><dd>' + esc(t.categoria_nome || '—') + '</dd>' +
-      '<dt>Condomínio</dt><dd>' + (t.condominio_nome ? esc(t.condominio_nome) + (t.condominio_comarca ? ' · ' + esc(t.condominio_comarca) : '') : t.demanda_interna ? 'Interna' : '—') + '</dd>' +
+      '<dt>Condomínio</dt><dd>' + (t.condominio_nome ? esc(t.condominio_nome) + (t.condominio_comarca ? ' · ' + esc(t.condominio_comarca) : '') : t.condominio_prospect ? esc(t.condominio_prospect) + ' <span class="etiqueta ambar">ainda não é cliente</span>' : t.demanda_interna ? 'Interna' : '—') + '</dd>' +
       '<dt>Aberto por</dt><dd>' + esc(t.solicitante_nome || '—') + '</dd><dt>Aberto em</dt><dd>' + quando(t.criado_em) + '</dd>' +
       '<dt>1ª resposta</dt><dd>' + (t.primeira_resposta_em ? quando(t.primeira_resposta_em) : '—') + '</dd>' +
       (t.resolvido_em ? '<dt>Resolvido em</dt><dd>' + quando(t.resolvido_em) + '</dd>' : '') + '</dl></div></div>' +
