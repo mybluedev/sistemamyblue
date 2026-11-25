@@ -8,7 +8,9 @@
  *  - SLA: entregue até o prazo = dentro; depois = fora. Sem entrega e com o prazo vencido, a demanda aparece como atrasada
  *    (não é um status que alguém marca). Ao passar para Aguardando assinaturas ou Concluído, a data da entrega é registrada.
  *  - Os pedidos da Solicitação de Contrato entram na lista e nos indicadores sozinhos, no tipo marcado na Tabela de prazos,
- *    com o prazo dela (72h úteis) e a primeira minuta como entrega. Não se lançam de novo aqui.
+ *    com o prazo desse tipo (como na planilha: Contrato (garantia) 8h úteis) e a primeira minuta como entrega. A parceria
+ *    entra no tipo de parceria (Contrato (parcerias), 16h). Não se lançam de novo aqui. As 72h úteis da minuta continuam
+ *    valendo só dentro da tela do contrato (aviso de prazo ao Jurídico).
  *  - Avisos (sino e e-mail): demanda nova para o Jurídico; mudança de situação e comentário para quem pediu; no dia do prazo
  *    e quando passa do prazo, para quem é responsável (ou para o Jurídico, se ninguém foi escolhido); e, uma vez por semana,
  *    a cada pessoa, o que está esperando por ela há 15 dias ou mais (retorno, minuta ou assinatura).
@@ -36,7 +38,7 @@ const ENTREGA_AO_MUDAR = JD.ENTREGA_AO_MUDAR; // mudou para estes sem data de en
 const AVISA_EMAIL = ['aguardando_retorno', 'concluido']; // situações que pedem algo de quem pediu (ou fecham o pedido)
 const SETOR_JURIDICO = 'Jurídico';
 const PERMISSAO = 'contratos.elaborar';
-const HORAS_CONTRATO = 72; // Solicitação de Contrato (e de Contrato Parceria): minuta em 72h úteis
+const HORAS_CONTRATO = 72; // Solicitação de Contrato (e Parceria): minuta em 72h úteis na tela do contrato; no Jurídico, só se a Tabela de prazos não tiver o tipo
 const TIPO_PARCERIA = 'Contrato de Parceria';
 const CANAIS = { portal: 'Portal', ticket: 'Ticket', email: 'E-mail', whatsapp: 'WhatsApp', telefone: 'Telefone', reuniao: 'Reunião', planilha: 'Planilha (importada)' };
 const DIAS_PARADO = 15; // aviso semanal: o que espera por quem pediu há 15 dias ou mais
@@ -180,9 +182,12 @@ function rotasJuridico({ db, seg, avisos, regras, expediente }) {
         d.protocolo, d.ticket_id
       FROM juridico_demandas d JOIN juridico_tipos t ON t.id = d.tipo_id LEFT JOIN usuarios ur ON ur.id = d.responsavel_id ${onde}`, args)).rows
       .map((d) => ({ ...d, origem: 'demanda', ref: d.protocolo || String(d.numero), espera_voce: d.status === 'aguardando_retorno' }));
-    const tipoCt = (await db.um('SELECT id, nome FROM juridico_tipos WHERE contratos ORDER BY id LIMIT 1')) || { id: null, nome: 'Contrato (Solicitação de Contrato)' };
+    const tipoCt = (await db.um('SELECT id, nome, horas FROM juridico_tipos WHERE contratos ORDER BY id LIMIT 1')) || { id: null, nome: 'Contrato (Solicitação de Contrato)' };
     // a parceria entra no tipo de parceria da Tabela de prazos (ex.: "Contrato (parcerias)"), se houver
-    const tipoCp = (await db.um("SELECT id, nome FROM juridico_tipos WHERE nome ILIKE '%parceri%' ORDER BY ordem, id LIMIT 1")) || { id: null, nome: TIPO_PARCERIA };
+    const tipoCp = (await db.um("SELECT id, nome, horas FROM juridico_tipos WHERE nome ILIKE '%parceri%' ORDER BY ordem, id LIMIT 1")) || { id: null, nome: TIPO_PARCERIA };
+    // prazo no Jurídico (lista, SLA e metas): o do tipo na Tabela de prazos, contado da data do pedido, como na planilha;
+    // sem o tipo na tabela, o prazo da minuta guardado no contrato (72h úteis)
+    const prazoContrato = (tipo, solicitada, prazoGuardado) => (tipo.horas ? prazoDe(solicitada, tipo.horas) : prazoGuardado ? diaBrasilia(prazoGuardado) : null);
     // em Meus pedidos entram também os rascunhos (ainda não enviados) de contrato e de parceria
     const enviados = vis === 'minhas' ? "((c.etapa <> 'rascunho' AND c.enviado_em IS NOT NULL) OR c.etapa = 'rascunho')" : "c.etapa <> 'rascunho' AND c.enviado_em IS NOT NULL";
     const args2 = [];
@@ -199,10 +204,10 @@ function rotasJuridico({ db, seg, avisos, regras, expediente }) {
         tipo_id: tipoCt.id, tipo: tipoCt.nome, solicitante_id: c.solicitante_id, solicitante_nome: c.solicitante_nome || '', setor: c.setor || '', uf: c.uf || '',
         cliente: c.condominio || '', objeto: c.protocolo ? `Solicitação de Contrato ${c.protocolo}` : 'Solicitação de Contrato (rascunho)', observacoes: '',
         responsavel_id: c.responsavel_id, responsavel_nome: c.responsavel_nome, canal: 'portal',
-        solicitada_em: diaBrasilia(c.enviado_em || c.criado_em), horas: HORAS_CONTRATO, prazo: c.prazo ? diaBrasilia(c.prazo) : null,
+        solicitada_em: diaBrasilia(c.enviado_em || c.criado_em), horas: tipoCt.horas || HORAS_CONTRATO, prazo: prazoContrato(tipoCt, diaBrasilia(c.enviado_em || c.criado_em), c.prazo),
         entregue_em: c.primeira_minuta_em ? diaBrasilia(c.primeira_minuta_em) : null, atualizado_em: c.atualizado_em,
         espera_voce: ['rascunho', 'pendencia', 'minuta_enviada'].includes(c.etapa) }));
-    // Solicitação de Contrato Parceria: entra igual, com o mesmo prazo (72h úteis) e a primeira minuta como entrega
+    // Solicitação de Contrato Parceria: entra igual, com o prazo do tipo de parceria e a primeira minuta como entrega
     const onde3 = vis === 'minhas' ? 'AND c.solicitante_id = $1' : '';
     const parcerias = (await db.q(`SELECT c.id, c.protocolo, c.etapa, c.empresa, c.enviado_em, c.criado_em, c.prazo, c.solicitante_id, us.nome AS solicitante_nome,
         c.responsavel_id, ur.nome AS responsavel_nome, c.atualizado_em,
@@ -214,7 +219,7 @@ function rotasJuridico({ db, seg, avisos, regras, expediente }) {
         tipo_id: tipoCp.id, tipo: tipoCp.nome, solicitante_id: c.solicitante_id, solicitante_nome: c.solicitante_nome || '', setor: c.setor || '', uf: '',
         cliente: c.empresa || '', objeto: c.protocolo ? `Solicitação de Contrato Parceria ${c.protocolo}` : 'Solicitação de Contrato Parceria (rascunho)', observacoes: '',
         responsavel_id: c.responsavel_id, responsavel_nome: c.responsavel_nome, canal: 'portal',
-        solicitada_em: diaBrasilia(c.enviado_em || c.criado_em), horas: HORAS_CONTRATO, prazo: c.prazo ? diaBrasilia(c.prazo) : null,
+        solicitada_em: diaBrasilia(c.enviado_em || c.criado_em), horas: tipoCp.horas || HORAS_CONTRATO, prazo: prazoContrato(tipoCp, diaBrasilia(c.enviado_em || c.criado_em), c.prazo),
         entregue_em: c.primeira_minuta_em ? diaBrasilia(c.primeira_minuta_em) : null, atualizado_em: c.atualizado_em,
         espera_voce: ['rascunho', 'pendencia', 'minuta_enviada'].includes(c.etapa) }));
     return marcar([...manuais, ...contratos, ...parcerias], hoje)

@@ -154,6 +154,19 @@ const MODULOS = [
     // o HTML (com regras e percentuais) NÃO fica no repositório: a administração envia uma vez pelo painel
     config: { titulo: 'Gestão de Premiações', relatorios_comissao: true },
   },
+  {
+    // a tela do Painel do Jurídico em HTML (muda sem GitHub). Os dados e as regras continuam nas rotas do Jurídico,
+    // de Contratos e de Parcerias (liberadas para ela em server/seguranca.js). Nasce isolada; o HTML fica fora do repositório.
+    // Com o HTML enviado e aprovado, o item "Painel do Jurídico" do menu passa a abri-la.
+    slug: 'painel-juridico',
+    nome: 'Painel do Jurídico',
+    descricao: 'Minhas demandas, assinaturas, desempenho, metas (% dentro do SLA por atividade e mês), todas as demandas, diretoria e cadastro de parceiros.',
+    setor: 'Jurídico',
+    icone: 'pasta',
+    ordem: 1,
+    armazenamento: 'navegador',
+    config: { titulo: 'Painel do Jurídico', isolada: true },
+  },
 ];
 
 module.exports = { SETORES_RENOMEADOS, SETORES, MODULOS, CHAVES_DE_SISTEMA: ['colecao_padrao', 'colecoes', 'cabecalho_padrao', 'patches_interno', 'titulo', 'relatorios_comissao'] };

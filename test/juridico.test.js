@@ -190,6 +190,9 @@ test('o Jurídico conduz: responsável, aguardando retorno, comentário de quem 
   assert.equal(r.status, 400); // responsável precisa ser do Jurídico
   r = await adv('PATCH', `/api/juridico/demandas/${idD}`, { responsavel_id: ids['adv@teste.com'], status: 'aguardando_retorno', observacoes: 'Falta a ata.' });
   assert.equal(r.status, 200, r.texto);
+  // Aguardando retorno conta como entrega (como na planilha): a data fica registrada e entra no SLA e nas metas
+  assert.equal(r.json.entregue_em, diaBr());
+  assert.ok((await adv('GET', `/api/juridico/demandas/${idD}`)).json.demanda.sla);
   assert.ok((await avisosDe('exec@teste.com')).some((a) => /^Aguardando retorno · demanda JUR-/.test(a.titulo) && /Falta a ata/.test(a.texto)));
   assert.equal((await comercial('GET', '/api/juridico/resumo')).json.retorno, 1);
   assert.equal((await comercial('PATCH', `/api/juridico/demandas/${idD}`, { status: 'concluido' })).status, 403);
@@ -233,11 +236,13 @@ test('o Jurídico lança pelos outros com data passada; a Tabela de prazos recal
 test('os pedidos da Solicitação de Contrato entram na lista e nos indicadores, sem lançar de novo', async () => {
   const { id } = await ctx.db.um(`INSERT INTO contratos (protocolo, etapa, origem, condominio, uf, solicitante_id, enviado_em, prazo)
     VALUES ('CT-2026-06-10-01', 'minuta_enviada', 'entrega', 'Condomínio Contrato', 'RN', $1, '2026-06-10T12:00:00-03:00', '2026-06-15T12:00:00-03:00') RETURNING id`, [ids['exec@teste.com']]);
-  await ctx.db.q("INSERT INTO contrato_eventos (contrato_id, tipo, criado_em) VALUES ($1, 'minuta_enviada', '2026-06-12T15:00:00-03:00')", [id]);
+  await ctx.db.q("INSERT INTO contrato_eventos (contrato_id, tipo, criado_em) VALUES ($1, 'minuta_enviada', '2026-06-11T15:00:00-03:00')", [id]);
   const l = (await adv('GET', '/api/juridico/demandas?vis=todas&origem=contrato')).json.demandas;
   assert.equal(l.length, 1);
-  assert.deepEqual([l[0].ref, l[0].tipo, l[0].status, l[0].solicitada_em, l[0].prazo, l[0].entregue_em, l[0].sla, l[0].setor],
-    ['CT-2026-06-10-01', 'Contrato (garantia)', 'aguardando_retorno', '2026-06-10', '2026-06-15', '2026-06-12', 'dentro', 'Comercial']);
+  // o prazo no Jurídico é o do tipo na Tabela de prazos (Contrato (garantia): 8h = 1 dia útil, como na planilha),
+  // não as 72h da minuta guardadas no contrato
+  assert.deepEqual([l[0].ref, l[0].tipo, l[0].status, l[0].solicitada_em, l[0].prazo, l[0].entregue_em, l[0].sla, l[0].setor, l[0].horas],
+    ['CT-2026-06-10-01', 'Contrato (garantia)', 'aguardando_retorno', '2026-06-10', '2026-06-11', '2026-06-11', 'dentro', 'Comercial', 8]);
   assert.ok((await comercial('GET', '/api/juridico/demandas?vis=minhas')).json.demandas.some((x) => x.id === `ct-${id}`));
   const ind = (await diretor('GET', '/api/juridico/indicadores?ano=2026')).json;
   const garantia = ind.tipos.find((t) => t.nome === 'Contrato (garantia)');

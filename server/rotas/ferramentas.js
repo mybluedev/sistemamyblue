@@ -24,7 +24,7 @@ function rotasFerramentas({ db, seg, modulos, registros, documentos, acessos, bo
     const lista = (await modulos.listar())
       .filter((m) => (m.ativo || req.usuario.papel === 'admin') && (!permitidos || permitidos.has(m.slug)))
       .map((m) => ({ slug: m.slug, nome: m.nome, descricao: m.descricao, setor: m.setor_nome || 'Outros', setor_ordem: m.setor_ordem ?? 999,
-        icone: m.icone, ativo: m.ativo, tem_arquivo: m.tem_arquivo, versao_em: m.versao_em, isolada: !!m.config.isolada || m.pendente }));
+        icone: m.icone, ativo: m.ativo, tem_arquivo: m.tem_arquivo, versao_em: m.versao_em, isolada: !!m.config.isolada || m.pendente, pendente: !!m.pendente }));
     const { rows: recentes } = await db.q(`SELECT modulo_slug, MAX(quando) AS quando FROM auditoria
       WHERE usuario_id = $1 AND acao = 'modulo_aberto' GROUP BY modulo_slug ORDER BY quando DESC LIMIT 6`, [req.usuario.id]);
     // nomes do menu trocados em Configurações → Nomes e abas

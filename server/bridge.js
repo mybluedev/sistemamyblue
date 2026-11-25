@@ -57,6 +57,14 @@
     try { window.parent.postMessage({ myblue: true, tipo: tipo, modulo: C.modulo, extra: extra || null }, CHAVE ? '*' : location.origin); } catch (e) { /* sem portal */ }
   }
 
+  /* abrir uma tela do portal a partir da ferramenta (ex.: o Painel do Jurídico abre o contrato): o portal só aceita telas
+     do Jurídico, de contratos, de parcerias e tickets. Fora do portal, abre numa aba nova. */
+  C.abrir = function (hash) {
+    hash = String(hash || '');
+    if (!noTopo) { try { window.open('/' + hash, '_blank', 'noopener'); } catch (e) { /* sem portal */ } return; }
+    try { window.parent.postMessage({ myblue: true, tipo: 'abrir', modulo: C.modulo, extra: hash }, CHAVE ? '*' : location.origin); } catch (e) { /* sem portal */ }
+  };
+
   (C.avisos || []).forEach(function (a) {
     document.addEventListener('DOMContentLoaded', function () {
       var d = document.createElement('div');

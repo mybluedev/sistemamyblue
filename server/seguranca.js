@@ -219,6 +219,21 @@ function criarSeguranca(db, cfg) {
     next();
   };
 
+  /* Painel do Jurídico em HTML (ferramenta isolada): a tela é a ferramenta; os dados e as regras (prazos, SLA, metas,
+     avisos) continuam nas rotas do Jurídico, de Contratos e de Parcerias, que conferem quem é a pessoa como no portal.
+     Ficam fora: Tabela de prazos, importação da planilha e os passos do contrato que pedem arquivo (abrem a tela do portal). */
+  const MODULO_PAINEL_JURIDICO = 'painel-juridico';
+  function rotaDoPainelJuridico(metodo, p) {
+    const ler = metodo === 'GET' || metodo === 'HEAD';
+    if (ler && /^\/api\/juridico\/(meta|resumo|demandas|demandas\.xlsx|demandas\/\d+|assinaturas|indicadores)$/.test(p)) return true;
+    if (metodo === 'POST' && (p === '/api/juridico/demandas' || /^\/api\/juridico\/demandas\/\d+\/comentario$/.test(p))) return true;
+    if ((metodo === 'PATCH' || metodo === 'DELETE') && /^\/api\/juridico\/demandas\/\d+$/.test(p)) return true;
+    if (ler && /^\/api\/(contratos|parcerias)(\/(meta|resumo))?$/.test(p)) return true;
+    if (ler && p === '/api/contratos/painel') return true;
+    if (metodo === 'POST' && /^\/api\/contratos\/\d+\/em-assinatura$/.test(p)) return true;
+    return false;
+  }
+
   /* PartnerChip (painel de parceiros) mostra, ao vivo, os números da Prestação de Contas (parceiros) */
   const LEITURA_DE_OUTRA = { 'partnerchip-resultados': ['parceiros'] };
 
@@ -254,6 +269,8 @@ function criarSeguranca(db, cfg) {
     // Controle de Repasses: envia o .zip dos comprovantes de cada assistente, lista e baixa (a rota confere o papel Gestor)
     if (s === 'repasses' && p === '/api/repasses/comprovantes' && (ler || req.method === 'POST')) return true;
     if (s === 'repasses' && ler && /^\/api\/repasses\/comprovantes\/\d+\/arquivo$/.test(p)) return true;
+    // Painel do Jurídico: as rotas do Jurídico, de Contratos e de Parcerias que a tela usa (cada rota confere o perfil)
+    if (s === MODULO_PAINEL_JURIDICO && rotaDoPainelJuridico(req.method, p)) return true;
     if (p.startsWith('/api/comissao/')) {
       const m = await db.um('SELECT config FROM modulos WHERE slug = $1', [s]);
       return !!(m && m.config && m.config.relatorios_comissao);

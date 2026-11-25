@@ -270,3 +270,38 @@ test('PartnerChip isolado lê (só lê) os dados da Prestação de Contas, se qu
   const daAgenda = chaveDa((await admin('GET', '/m/agenda/')).texto);
   assert.equal((await daFerramenta('GET', `/t/${daAgenda}/api/gas/parceiros?sheet=status`)).status, 403);
 });
+
+test('Painel do Jurídico (ferramenta isolada): já vem no catálogo, alcança as rotas do Jurídico que a tela usa e nada além', async () => {
+  const lista = (await admin('GET', '/api/modulos')).json.modulos;
+  const pj = lista.find((m) => m.slug === 'painel-juridico');
+  assert.ok(pj, 'a ferramenta vem do catálogo');
+  assert.deepEqual([pj.setor, pj.isolada, pj.tem_arquivo, pj.pendente], ['Jurídico', true, false, false]);
+  assert.equal((await admin('PUT', '/api/admin/modulos/painel-juridico/arquivo', '<!doctype html><html><head><title>Painel do Jurídico</title></head><body>ok</body></html>')).status, 200);
+  const pag = await admin('GET', '/m/painel-juridico/');
+  assert.match(pag.headers.get('content-security-policy'), /^sandbox /);
+  assert.match(pag.texto, /C\.abrir = function/); // a ponte oferece abrir telas do portal
+  const k = `/t/${chaveDa(pag.texto)}`;
+  // o que a tela usa: listas, uma demanda, assinaturas, indicadores, planilha, contratos e parcerias (só leitura)
+  for (const url of ['/api/juridico/meta', '/api/juridico/resumo', '/api/juridico/demandas?vis=fazer', '/api/juridico/assinaturas', '/api/juridico/indicadores?ano=2026&mes=0',
+    '/api/juridico/demandas.xlsx?vis=todas', '/api/contratos/meta', '/api/contratos/resumo', '/api/contratos?vis=diretoria', '/api/contratos/painel?ano=2026&mes=0',
+    '/api/parcerias/meta', '/api/parcerias/resumo', '/api/parcerias?vis=parceiros']) {
+    assert.equal((await daFerramenta('GET', k + url)).status, 200, url);
+  }
+  const tipo = (await daFerramenta('GET', k + '/api/juridico/meta')).json.tipos.find((t) => t.nome === 'Aditivo') || (await daFerramenta('GET', k + '/api/juridico/meta')).json.tipos[0];
+  if (tipo) {
+    const nova = await daFerramenta('POST', k + '/api/juridico/demandas', { tipo_id: tipo.id, cliente: 'Condomínio Teste' });
+    assert.equal(nova.status, 201, nova.texto);
+    assert.equal((await daFerramenta('PATCH', `${k}/api/juridico/demandas/${nova.json.id}`, { status: 'aguardando_retorno' })).status, 200);
+    assert.equal((await daFerramenta('POST', `${k}/api/juridico/demandas/${nova.json.id}/comentario`, { texto: 'ok' })).status, 201);
+    assert.equal((await daFerramenta('GET', `${k}/api/juridico/demandas/${nova.json.id}`)).status, 200);
+    assert.equal((await daFerramenta('DELETE', `${k}/api/juridico/demandas/${nova.json.id}`)).status, 200);
+  }
+  // fora do que a tela usa: Tabela de prazos, importação, detalhe e passos do contrato, administração
+  for (const [m, url] of [['PUT', '/api/juridico/tipos'], ['GET', '/api/juridico/importacao'], ['GET', '/api/contratos/1'], ['POST', '/api/contratos/1/assinado'],
+    ['POST', '/api/parcerias/1/assinado'], ['GET', '/api/admin/usuarios'], ['GET', '/api/tickets']]) {
+    assert.equal((await daFerramenta(m, k + url, m === 'GET' ? undefined : {})).status, 403, `${m} ${url}`);
+  }
+  // outra ferramenta não alcança as rotas do Jurídico
+  const ka = `/t/${chaveDa((await admin('GET', '/m/agenda/')).texto)}`;
+  assert.equal((await daFerramenta('GET', ka + '/api/juridico/meta')).status, 403);
+});
