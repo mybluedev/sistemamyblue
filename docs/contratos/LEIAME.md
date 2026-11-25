@@ -190,7 +190,10 @@ avisos, contratos e parcerias.
 
 - **Catálogo**: `server/catalogo.js` cria a ferramenta (setor Jurídico, isolada, sem HTML). Com o HTML enviado e aprovado e a
   ferramenta liberada para a pessoa (*Configurações → Acessos → Ferramentas*), o item **Painel do Jurídico** do menu passa a
-  abri-la (`modPainelJ` em `public/app.js`); sem isso, continua a tela própria do portal.
+  abri-la (`modPainelJ` em `public/app.js`; vale também uma ferramenta cadastrada à mão com o nome "Painel do Jurídico");
+  sem isso, continua a tela própria do portal. As demais ferramentas do setor Jurídico (ex.: Edição Contratual) entram no
+  mesmo grupo "Jurídico" do menu, logo abaixo: um grupo só. **Isolada, só a de slug `painel-juridico` alcança os dados**
+  (a liberação das rotas é pelo slug): a cadastrada à mão com outro slug precisa rodar sem isolamento ou ser trocada pela do catálogo.
 - **O que ela alcança** (isolada, pela chave): `rotaDoPainelJuridico` em `server/seguranca.js` — as rotas do Jurídico que a
   tela usa (listas, uma demanda, registrar, editar, comentar, excluir, assinaturas, indicadores, planilha), contratos e
   parcerias só para ler as listas, os resumos e o painel, e `POST /api/contratos/:id/em-assinatura`. Tabela de prazos,

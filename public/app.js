@@ -270,6 +270,7 @@
     var html = termo ? '' : '<a href="#/" class="' + (rota === '#/' ? 'on' : '') + '">' + IC.inicio + esc(rot('inicio', 'Início')) + '</a>' +
       '<a href="#/links" class="' + (rota.indexOf('#/links') === 0 ? 'on' : '') + '">' + IC.link + esc(rot('links', 'Central de Links')) + '</a>' +
       ((tutoriais && tutoriais.tutoriais.length) || eu.papel === 'admin' ? '<a href="#/tutoriais" class="' + (rota.indexOf('#/tutoriais') === 0 ? 'on' : '') + '">' + IC.video + esc(rot('tutoriais', 'Tutoriais')) + '</a>' : '');
+    var pj = modPainelJ();
     if (!termo) {
       html += '<div class="grupo">' + esc(rot('grupo_tickets', 'Central de Tickets')) + '</div>' +
         '<a href="#/tickets" class="' + (rota.indexOf('#/tickets') === 0 && rota.indexOf('#/tickets/painel') !== 0 ? 'on' : '') + '">' + IC.ticket + '<span>' + esc(rot('tickets', 'Tickets')) + '</span>' +
@@ -284,10 +285,15 @@
         '<a href="#/juridico/pedidos" class="' + (rota.indexOf('#/juridico/pedidos') === 0 ? 'on' : '') + '">' + IC.documento +
           '<span>' + esc(rot('juridico_pedidos', 'Solicitações ao Jurídico')) + '</span><i data-contador="jur-pedidos" class="contador" hidden></i></a>' +
         // com a ferramenta "Painel do Jurídico" (HTML) publicada e liberada para a pessoa, o item abre a ferramenta
-        (modPainelJ() ? '<a href="#/m/' + MOD_PAINEL_J + '" data-slug="' + MOD_PAINEL_J + '" class="' + (atual === MOD_PAINEL_J && rota.indexOf('#/m/') === 0 ? 'on' : '') + '">' + IC.pasta +
-          '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i>' + (quadros[MOD_PAINEL_J] ? '<i class="aberto" title="Aberta"></i>' : '') + '</a>'
+        (pj ? '<a href="#/m/' + esc(pj.slug) + '" data-slug="' + esc(pj.slug) + '" class="' + (atual === pj.slug && rota.indexOf('#/m/') === 0 ? 'on' : '') + '">' + IC.pasta +
+          '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i>' + (quadros[pj.slug] ? '<i class="aberto" title="Aberta"></i>' : '') + '</a>'
           : temPainelJ() ? '<a href="#/juridico/painel" class="' + (rota.indexOf('#/juridico/painel') === 0 ? 'on' : '') + '">' + IC.pasta +
           '<span>' + esc(rot('juridico_painel', 'Painel do Jurídico')) + '</span><i data-contador="jur-painel" class="contador" hidden></i></a>' : '') +
+        // as demais ferramentas do setor Jurídico entram no mesmo grupo (um grupo "Jurídico" só no menu)
+        lista.filter(function (m) { return m.setor === SETOR_JUR && m.slug !== MOD_PAINEL_J && normal(m.nome) !== 'painel do juridico'; }).map(function (m) {
+          return '<a href="#/m/' + esc(m.slug) + '" data-slug="' + esc(m.slug) + '" class="' + (atual === m.slug && rota.indexOf('#/m/') === 0 ? 'on' : '') + '" title="' + esc(m.nome) + '">' +
+            (IC[m.icone] || IC.app) + '<span>' + esc(m.nome) + '</span>' + (quadros[m.slug] ? '<i class="aberto" title="Aberta"></i>' : '') + '</a>';
+        }).join('') +
         (resumoImp && resumoImp.acesso ? '<div class="grupo">' + esc(rot('grupo_implantacao', 'Implantação')) + '</div><a href="#/implantacao" class="' + (rota.indexOf('#/implantacao') === 0 ? 'on' : '') + '">' + IC.casa +
           '<span>' + esc(rot('implantacao', 'Painel de implantação')) + '</span><i data-contador="implantacao" class="contador" hidden></i></a>' : '');
       // Comissões: a ferramenta (só para quem tem acesso) e os demonstrativos de cada pessoa
@@ -299,7 +305,7 @@
         '<a href="#/premiacoes" class="' + (rota.indexOf('#/premiacoes') === 0 ? 'on' : '') + '">' + IC.documento + '<span>' + esc(rot('minhas_premiacoes', 'Minhas Premiações')) + '</span>' +
           '<i class="contador"' + (pendC ? '' : ' hidden') + ' title="Demonstrativos esperando o seu “Estou ciente” e planilhas para enviar">' + pendC + '</i></a>';
     }
-    porSetor(termo ? lista : lista.filter(function (m) { return m.slug !== MOD_COMISSAO && !(m.slug === MOD_PAINEL_J && modPainelJ()); })).forEach(function (g) {
+    porSetor(termo ? lista : lista.filter(function (m) { return m.slug !== MOD_COMISSAO && m.setor !== SETOR_JUR; })).forEach(function (g) {
       html += '<div class="grupo">' + esc(g.setor) + '</div>';
       g.itens.forEach(function (m) {
         html += '<a href="#/m/' + esc(m.slug) + '" data-slug="' + esc(m.slug) + '" class="' + (atual === m.slug && rota.indexOf('#/m/') === 0 ? 'on ' : '') + (m.ativo ? '' : 'inativo') + '" title="' + esc(m.nome) + '">' +
@@ -8088,8 +8094,12 @@
   // o Painel do Jurídico aparece para o Jurídico, a diretoria e o setor Parceiros (cadastro do parceiro)
   function temPainelJ() { return !!((resumoDj && resumoDj.ve_tudo) || (resumoCt && resumoCt.painel) || (resumoCp && resumoCp.parceiros != null)); }
   // a ferramenta "Painel do Jurídico" (HTML, sem GitHub para mudar a tela): vale quando tem HTML aprovado e a pessoa abre
-  var MOD_PAINEL_J = 'painel-juridico';
-  function modPainelJ() { return (modulos || []).some(function (m) { return m.slug === MOD_PAINEL_J && m.ativo && m.tem_arquivo && !m.pendente; }); }
+  // (a do catálogo, slug painel-juridico; ou uma cadastrada à mão com o nome "Painel do Jurídico"). Devolve a ferramenta ou null.
+  var MOD_PAINEL_J = 'painel-juridico', SETOR_JUR = 'Jurídico';
+  function modPainelJ() {
+    var ok = (modulos || []).filter(function (m) { return m.ativo && m.tem_arquivo && !m.pendente; });
+    return ok.find(function (m) { return m.slug === MOD_PAINEL_J; }) || ok.find(function (m) { return normal(m.nome) === 'painel do juridico'; }) || null;
+  }
   function etqDj(d) {
     if (d.origem === 'contrato' || d.origem === 'parceria') return etqCr(d.origem === 'contrato' ? ETAPA_CT : ETAPA_CP, d.etapa) + (d.atrasada ? ' ' + etq(['fora do SLA', 'vermelha']) : '');
     return etqCr(STATUS_DJ, d.status) + (d.atrasada ? ' ' + etq(['fora do SLA', 'vermelha']) : d.vence_hoje ? ' ' + etq(['vence hoje', 'ambar']) : '');
